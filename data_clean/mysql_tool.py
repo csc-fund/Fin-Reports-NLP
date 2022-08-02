@@ -5,7 +5,7 @@
 # @Author    :Colin
 # @Note      :None
 
-from h5_parse.settings import *
+from data_clean.settings import *
 import mysql.connector
 import pandas as pd
 
