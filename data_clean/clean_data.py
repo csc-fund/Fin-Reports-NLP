@@ -13,9 +13,12 @@ class GenTradeData:
         self.SqlObj = MysqlDao()
         self.TuShare = ts.pro_api(TUSHARE_AK)
 
+        # 要用到的表
         self.TradeTable = None
         self.NaturalTable = None
         self.MergeTable = None
+
+        # 建表
 
     def get_trade_table(self):
         from datetime import datetime as dt
@@ -37,7 +40,6 @@ class GenTradeData:
 
         # ---------------------映射------------------------ #
         self.MergeTable['map_tradedate'] = self.MergeTable['trade_date'].fillna(method='bfill')
-        self.MergeTable = self.MergeTable.where(self.MergeTable.notnull(), None)
         # ---------------------滞后------------------------ #
         dict_type = {"date": 'DATE', "PK": "date"}
         for i in DATE_LAGLIST:
@@ -45,11 +47,12 @@ class GenTradeData:
             dict_type.update({'map_tradedate_l{}'.format(i): "DATE"})
 
         # ---------------------入库----------------------- #
+        self.MergeTable = self.MergeTable.where(self.MergeTable.notnull(), None)
         self.SqlObj.insert_table('natural_trade_date', self.MergeTable, dict_type)
 
 
 # 语言处理类
-class GenData:
+class GenPriceData:
     def __init__(self):
         self.SqlObj = MysqlDao()
         self.df = self.SqlObj.select_table(table_name=MYSQL_TABLENAME,
@@ -103,4 +106,5 @@ class GenData:
 # data = GenData()
 # data.get_report_price()
 # data.filter_data()
-GenTradeData().get_trade_table()
+# GenTradeData().get_trade_table()
+GenPriceData().get_report_price()
