@@ -168,3 +168,4 @@ class GenPriceData:
 # data.filter_data()
 # GenDateData().get_trade_table()
 GenPriceData().get_report_price(lag_t=1)
+
