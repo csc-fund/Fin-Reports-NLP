@@ -25,7 +25,7 @@ class GenTradeData:
         self.NaturalTable = pd.DataFrame(pd.date_range(start='1/1/2012', end='6/1/2022'))
 
         # ---------------------合并------------------------ #
-        df_con = pd.merge(df_date, df_tdate, how='left', on=['date_ts'])
+        df_con = pd.merge( self.NaturalTable, self.TradeTable, how='left', on=['date_ts'])
 
 
 
