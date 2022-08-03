@@ -92,11 +92,10 @@ class GenPriceData:
             else:
                 df_tradedate = df_tradedate['map_tradedate']
 
-            # 去除df中的第一列
-            print(df_tradedate.iloc[0])
-            dt.strptime(df_tradedate.iloc[0],)
-            trade_date = str(df_tradedate.iloc[0]).replace('-', '')
-            print(trade_date)
+            # 保留df中的第一列
+            trade_date = df_tradedate.iloc[0]
+            # 时间转换为tu查询的格式
+            trade_date = dt.strftime(dt.strptime(trade_date, "%Y-%m-%d").date(), "%Y%m%d")
 
             # 网络可能出错
             try:
@@ -109,17 +108,12 @@ class GenPriceData:
             except Exception as e:
                 print(e, code, trade_date, price, )
 
-            # price = price.iloc[0]
-            #
-            #
-            #
-
             return price
 
         # ------------------------对每行执行查询---------------------#
         self.df_report_db['close'.format(lag_t)] = self.df_report_db[
             ['stockcode', 'ann_date', 'report_id', ]].apply(
-            lambda x: query_price(x),
+            lambda x: query_price(x, LAG_FLAG=False),
             axis=1)
 
         # ------------------------入库---------------------#
@@ -162,11 +156,9 @@ class GenPriceData:
 # -----------------------数据清洗-----------------------#
 
 
-
 # -----------------------数据清洗-----------------------#
 # data = GenData()
 # data.get_report_price()
 # data.filter_data()
-GenDateData().get_trade_table()
+# GenDateData().get_trade_table()
 GenPriceData().get_report_price(lag_t=1)
-
