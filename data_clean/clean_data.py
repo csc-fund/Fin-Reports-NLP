@@ -4,6 +4,7 @@ import time
 import numpy as np
 import pandas as pd
 
+from datetime import datetime as dt
 from data_clean.mysql_tool import *
 import tushare as ts
 
@@ -74,31 +75,49 @@ class GenPriceData:
                                                      filter_dict={"LIMIT": MYSQL_LIMIT})
 
         # ------------------------对每行执行查询---------------------#
-        def query_price(df):
+        def query_price(df, LAG_FLAG=False):
             # 处理传入参数
             ann_date = df['ann_date']
             code = df['stockcode']
 
-            # 把公告日期转为自然日期
-            df_map = self.df_date_db[self.df_date_db['date'] == ann_date]
-            df_map_lag = df_map['map_tradedate_l{}'.format(lag_t)]
-            trade_date = str(df_map_lag.iloc[0]).replace('-', '')
+            # 要返回的值
+            price = 0
+
+            # 先映射到交易日期
+            df_tradedate = self.df_date_db[self.df_date_db['date'] == ann_date]
+
+            # 如果需要滞后
+            if LAG_FLAG:
+                df_tradedate = df_tradedate['map_tradedate_l{}'.format(lag_t)]
+            else:
+                df_tradedate = df_tradedate['map_tradedate']
+
+            # 去除df中的第一列
+            print(df_tradedate.iloc[0])
+            dt.strptime(df_tradedate.iloc[0],)
+            trade_date = str(df_tradedate.iloc[0]).replace('-', '')
+            print(trade_date)
 
             # 网络可能出错
-            price = 0
             try:
                 # 在接口中查询
                 self.df_kline_tu = self.TuShare.query(api_name='daily',
                                                       ts_code=code,
                                                       trade_date=trade_date)
-                price = self.df_kline_tu['close'][0]
+                price = self.df_kline_tu['close']
+
             except Exception as e:
-                print(e)
+                print(e, code, trade_date, price, )
+
+            # price = price.iloc[0]
+            #
+            #
+            #
 
             return price
 
         # ------------------------对每行执行查询---------------------#
-        self.df_report_db['close_l{}'.format(lag_t)] = self.df_report_db[
+        self.df_report_db['close'.format(lag_t)] = self.df_report_db[
             ['stockcode', 'ann_date', 'report_id', ]].apply(
             lambda x: query_price(x),
             axis=1)
