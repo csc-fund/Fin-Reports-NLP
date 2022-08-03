@@ -1,5 +1,6 @@
 import re
 
+import numpy as np
 import pandas as pd
 
 from data_clean.mysql_tool import *
@@ -19,24 +20,32 @@ class GenTradeData:
     def get_trade_table(self):
         from datetime import datetime as dt
         # ---------------------生成交易日期表------------------------ #
-        self.TradeTable = self.TuShare.query(api_name='index_daily', ts_code='399300.SZ',
-                                             start_date='20050101', end_date='20221231', fields='trade_date')
+        self.TradeTable = self.TuShare.query(api_name='index_daily', ts_code=DATE_SHARE,
+                                             start_date=DATE_START, end_date=DATE_END, fields='trade_date')
         self.TradeTable['trade_date'] = self.TradeTable['trade_date'].apply(
             lambda x: pd.to_datetime(x, format="%Y%m%d").date())
         self.TradeTable['date'] = self.TradeTable['trade_date']
 
         # ---------------------生成自然日期表------------------------ #
-        self.NaturalTable = pd.DataFrame(pd.date_range(start='20050101', end='20221231'))
+        self.NaturalTable = pd.DataFrame(pd.date_range(start=DATE_START, end=DATE_END))
         self.NaturalTable.rename(columns={0: 'date'}, inplace=True)
 
         # ---------------------合并------------------------ #
         self.TradeTable['date'] = self.TradeTable['date'].astype('datetime64[ns]')
         self.MergeTable = pd.merge(self.NaturalTable, self.TradeTable,
                                    how='left', on=['date'])
-        self.MergeTable['fill_tradedate'] = self.MergeTable['trade_date'].fillna(method='bfill')
 
-        self.MergeTable.to_csv('MergeTable.csv')
+        # ---------------------映射------------------------ #
+        self.MergeTable['map_tradedate'] = self.MergeTable['trade_date'].fillna(method='bfill')
+        self.MergeTable = self.MergeTable.where(self.MergeTable.notnull(), None)
+        # ---------------------滞后------------------------ #
+        dict_type = {"date": 'DATE', "PK": "date"}
+        for i in DATE_LAGLIST:
+            self.MergeTable['map_tradedate_l{}'.format(i)] = self.MergeTable['map_tradedate'].shift(-i)
+            dict_type.update({'map_tradedate_l{}'.format(i): "DATE"})
 
+        # ---------------------入库----------------------- #
+        self.SqlObj.insert_table('natural_trade_date', self.MergeTable, dict_type)
 
 
 # 语言处理类

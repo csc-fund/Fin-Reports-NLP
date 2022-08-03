@@ -16,7 +16,13 @@ MYSQL_COLUMN = ["title", "report_id", "report_type",
 # 必要参数设置
 TUSHARE_VIPAPI = ['income_vip', 'balancesheet_vip', 'cashflow_vip', 'forecast_vip', 'express_vip', 'fina_mainbz_vip',
                   ]
-TUSHARE_AK='56a12424870cd0953907cde2c660b498c8fe774145b7f17afdc746dd'
+TUSHARE_AK = '56a12424870cd0953907cde2c660b498c8fe774145b7f17afdc746dd'
+
+# 日期设置
+DATE_SHARE='399300.SZ'
+DATE_START = "20050101"
+DATE_END = "20221231"
+DATE_LAGLIST = [1, 5, 10, 15, 20, 25, 30]
 # 爬取的日期
 
 
