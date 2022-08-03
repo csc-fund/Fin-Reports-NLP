@@ -16,6 +16,7 @@ MYSQL_COLUMN = ["title", "report_id", "report_type",
 # 必要参数设置
 TUSHARE_VIPAPI = ['income_vip', 'balancesheet_vip', 'cashflow_vip', 'forecast_vip', 'express_vip', 'fina_mainbz_vip',
                   ]
+TUSHARE_AK='56a12424870cd0953907cde2c660b498c8fe774145b7f17afdc746dd'
 # 爬取的日期
 
 

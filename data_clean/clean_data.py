@@ -3,6 +3,32 @@ from data_clean.mysql_tool import *
 import tushare as ts
 
 
+# 交易日期处理类
+class GenTradeData:
+    def __init__(self):
+        self.SqlObj = MysqlDao()
+        self.TuShare = ts.pro_api(TUSHARE_AK)
+
+        self.TradeTable = None
+        self.NaturalTable = None
+        self.MergeTable=None
+
+    def get_trade_table(self):
+        from datetime import datetime as dt
+        # ---------------------生成交易日期表------------------------ #
+        self.TradeTable = self.TuShare.query(api_name='index_daily', ts_code='399300.SZ',
+                                             start_date='20000101', end_date='20221231', fields='trade_date')
+        self.TradeTable['trade_date'] = self.TradeTable['trade_date'].apply(
+            lambda x: str(dt.strptime(x, "%Y%m%d").date()))
+
+        # ---------------------生成自然日期表------------------------ #
+        self.NaturalTable = pd.DataFrame(pd.date_range(start='1/1/2012', end='6/1/2022'))
+
+        # ---------------------合并------------------------ #
+        df_con = pd.merge(df_date, df_tdate, how='left', on=['date_ts'])
+
+
+
 # 语言处理类
 class GenData:
     def __init__(self):
@@ -11,12 +37,16 @@ class GenData:
                                            select_column=MYSQL_COLUMN,
                                            filter_dict={"LIMIT": 1000})
         # 实例化Tushare对象
-        self.TuShare = ts.pro_api('56a12424870cd0953907cde2c660b498c8fe774145b7f17afdc746dd')
+        self.TuShare = ts.pro_api(TUSHARE_AK)
 
     # 获取公告后的价格用于打标签
     def get_report_price(self):
         self.df = self.df[['stockcode', 'ann_date', 'report_id']]
-        print(self.df)
+        df = self.TuShare.query(api_name='daily',
+                                ts_code='000001.SZ',
+                                trade_date='20180702')
+
+        print(df)
 
     # 筛选有效数据
     def filter_data(self):
@@ -51,7 +81,7 @@ class GenData:
 
 
 # -----------------------数据清洗-----------------------#
-data = GenData()
-data.get_report_price()
+# data = GenData()
+# data.get_report_price()
 # data.filter_data()
-print(data.df)
+GenTradeData().get_trade_table()
