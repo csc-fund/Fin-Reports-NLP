@@ -57,59 +57,64 @@ class GenPriceData:
     def __init__(self):
         # 本地数据库表
         self.SqlObj = MysqlDao()
-        self.df_date_trade = self.SqlObj.select_table(DATE_TABLE, ['*'])
-        self.df_from_db = None
+        self.df_date_db = self.SqlObj.select_table(DATE_TABLE, ['*'])
+        self.df_report_db = None
 
         # 实例化Tushare对象
         self.TuShare = ts.pro_api(TUSHARE_AK)
-        self.df_from_tu = None
+        self.df_kline_tu = None
 
     # 获取公告后的价格用于打标签
-    def get_report_price(self):
+    def get_report_price(self, lag_t: int):
         # ---------------------从数据库读数据-------------------#
-        # 增加新的计算列到数据库
-        self.SqlObj.alter_table(MYSQL_TABLENAME, ['price_test', ], {'price_test': "FLOAT"})
-
-        self.df_from_db = self.SqlObj.select_table(table_name=MYSQL_TABLENAME,
-                                                   select_column=["*"],
-                                                   filter_dict={"price_test": "NULL", "LIMIT": MYSQL_LIMIT})
+        # # 增加新的计算列到数据库
+        # self.SqlObj.alter_table(MYSQL_TABLENAME, ['price_test', ], {'price_test': "FLOAT"})
+        self.df_report_db = self.SqlObj.select_table(table_name=MYSQL_TABLENAME,
+                                                     select_column=MYSQL_COLUMN,
+                                                     filter_dict={"LIMIT": MYSQL_LIMIT})
 
         # ------------------------对每行执行查询---------------------#
         def query_price(df):
-            # 把公告日期转为自然日期
+            # 处理传入参数
+            ann_date = df['ann_date']
+            code = df['stockcode']
 
-            # 在接口中查询
+            # 把公告日期转为自然日期
+            df_map = self.df_date_db[self.df_date_db['date'] == ann_date]
+            df_map_lag = df_map['map_tradedate_l{}'.format(lag_t)]
+            trade_date = str(df_map_lag.iloc[0]).replace('-', '')
+
+            # 网络可能出错
             price = 0
-            try:  # 网络可能出错
-                df_price = self.TuShare.query(api_name='daily',
-                                              ts_code=df['stockcode'],
-                                              trade_date=str(df['ann_date']).replace('-', ''))
-                price = df_price['close'][0]
+            try:
+                # 在接口中查询
+                self.df_kline_tu = self.TuShare.query(api_name='daily',
+                                                      ts_code=code,
+                                                      trade_date=trade_date)
+                price = self.df_kline_tu['close'][0]
             except Exception as e:
                 print(e)
-            print(price)
-            time.sleep(11111)
 
             return price
 
         # ------------------------对每行执行查询---------------------#
-        self.df_from_db['price_test'] = self.df_from_db[['stockcode', 'ann_date', 'report_id', ]].apply(
+        self.df_report_db['close_l{}'.format(lag_t)] = self.df_report_db[
+            ['stockcode', 'ann_date', 'report_id', ]].apply(
             lambda x: query_price(x),
             axis=1)
 
+        # ------------------------入库---------------------#
 
-        print(self.df_from_db['price_test'])
+        print(self.df_report_db)
         #
         # self.df_from_tu = self.TuShare.query(api_name='daily',
         #                                      ts_code='000001.SZ',
         #                                      trade_date='20180702')
 
-        print(self.df_from_db)
-
     # 筛选有效数据
     def filter_data(self):
         # 排除非个股报告
-        self.df_from_db = self.df_from_db[self.df_from_db['report_type'] != 21]
+        self.df_report_db = self.df_report_db[self.df_report_db['report_type'] != 21]
         # 选择有冒号的数据
         # self.df = self.df[self.df['report_type'].str.contains('：')]
         # 选择指定长度的数据
@@ -143,4 +148,4 @@ class GenPriceData:
 # data.get_report_price()
 # data.filter_data()
 # GenDateData().get_trade_table()
-GenPriceData().get_report_price()
+GenPriceData().get_report_price(lag_t=1)

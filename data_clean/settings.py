@@ -24,7 +24,7 @@ DATE_SHARE = '399300.SZ'
 DATE_START = "20050101"
 DATE_END = "20221231"
 DATE_LAGLIST = [1, 5, 10, 15, 20, 25, 30]
-DATE_TABLE='natural_trade_date'
+DATE_TABLE = 'natural_trade_date'
 # 爬取的日期
 
 
