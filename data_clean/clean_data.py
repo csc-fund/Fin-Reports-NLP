@@ -1,4 +1,7 @@
 import re
+
+import pandas as pd
+
 from data_clean.mysql_tool import *
 import tushare as ts
 
@@ -11,21 +14,28 @@ class GenTradeData:
 
         self.TradeTable = None
         self.NaturalTable = None
-        self.MergeTable=None
+        self.MergeTable = None
 
     def get_trade_table(self):
         from datetime import datetime as dt
         # ---------------------生成交易日期表------------------------ #
         self.TradeTable = self.TuShare.query(api_name='index_daily', ts_code='399300.SZ',
-                                             start_date='20000101', end_date='20221231', fields='trade_date')
+                                             start_date='20050101', end_date='20221231', fields='trade_date')
         self.TradeTable['trade_date'] = self.TradeTable['trade_date'].apply(
-            lambda x: str(dt.strptime(x, "%Y%m%d").date()))
+            lambda x: pd.to_datetime(x, format="%Y%m%d").date())
+        self.TradeTable['date'] = self.TradeTable['trade_date']
 
         # ---------------------生成自然日期表------------------------ #
-        self.NaturalTable = pd.DataFrame(pd.date_range(start='1/1/2012', end='6/1/2022'))
+        self.NaturalTable = pd.DataFrame(pd.date_range(start='20050101', end='20221231'))
+        self.NaturalTable.rename(columns={0: 'date'}, inplace=True)
 
         # ---------------------合并------------------------ #
-        df_con = pd.merge( self.NaturalTable, self.TradeTable, how='left', on=['date_ts'])
+        self.TradeTable['date'] = self.TradeTable['date'].astype('datetime64[ns]')
+        self.MergeTable = pd.merge(self.NaturalTable, self.TradeTable,
+                                   how='left', on=['date'])
+        self.MergeTable['fill_tradedate'] = self.MergeTable['trade_date'].fillna(method='bfill')
+
+        self.MergeTable.to_csv('MergeTable.csv')
 
 
 
