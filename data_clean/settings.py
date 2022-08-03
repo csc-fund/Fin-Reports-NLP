@@ -5,6 +5,13 @@ MYSQL_HOST = '127.0.0.1'
 MYSQL_NAME = 'root'
 MYSQL_PASSWORD = ''
 MYSQL_DATABASE = 'zyyx'
+MYSQL_TABLENAME = 'rpt_earnings_adjust'
+MYSQL_COLUMN = ["title", "report_id", "report_type",
+                "stockcode", "stock_name",
+                "organ_id", "organ_name",
+                "author",
+                "ann_date", "current_create_date", "previous_create_date",
+                ]
 
 # 必要参数设置
 TUSHARE_VIPAPI = ['income_vip', 'balancesheet_vip', 'cashflow_vip', 'forecast_vip', 'express_vip', 'fina_mainbz_vip',
