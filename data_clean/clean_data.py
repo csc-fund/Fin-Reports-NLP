@@ -1,5 +1,6 @@
 import re
 from data_clean.mysql_tool import *
+import tushare as ts
 
 
 # 语言处理类
@@ -9,11 +10,13 @@ class GenData:
         self.df = self.SqlObj.select_table(table_name=MYSQL_TABLENAME,
                                            select_column=MYSQL_COLUMN,
                                            filter_dict={"LIMIT": 1000})
+        # 实例化Tushare对象
+        self.TuShare = ts.pro_api('56a12424870cd0953907cde2c660b498c8fe774145b7f17afdc746dd')
 
     # 获取公告后的价格用于打标签
     def get_report_price(self):
-        pass
-
+        self.df = self.df[['stockcode', 'ann_date', 'report_id']]
+        print(self.df)
 
     # 筛选有效数据
     def filter_data(self):
@@ -49,5 +52,6 @@ class GenData:
 
 # -----------------------数据清洗-----------------------#
 data = GenData()
-data.filter_data()
+data.get_report_price()
+# data.filter_data()
 print(data.df)
