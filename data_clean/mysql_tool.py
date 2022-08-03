@@ -59,19 +59,20 @@ class MysqlDao:
             # logger.error(e)
             # print(self.tup_todb)
 
-
             print('mysql.connector.Error', e)
 
     # 重命名sql查询的df
     def cur_to_df(self) -> pd.DataFrame:
         if self.cur is not None:
-            # 转换为df重命名并返回
-            dict_columns = {i: self.cur.column_names[i] for i in range(len(self.cur.column_names))}
-            # print(self.cur)
-            self.df_cur = pd.DataFrame(self.cur)
-            # print(df_cur)
-            self.df_cur.rename(columns=dict_columns, inplace=True)
-            return self.df_cur
+            try:
+                # 转换为df重命名并返回
+                dict_columns = {i: self.cur.column_names[i] for i in range(len(self.cur.column_names))}
+                self.df_cur = pd.DataFrame(self.cur)
+                self.df_cur.rename(columns=dict_columns, inplace=True)
+                return self.df_cur
+            except TypeError:
+                return pd.DataFrame()
+
         else:
             return pd.DataFrame()
 
