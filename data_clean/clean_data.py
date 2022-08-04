@@ -7,6 +7,7 @@ import pandas as pd
 from datetime import datetime as dt
 from data_clean.mysql_tool import *
 import tushare as ts
+from tqdm.auto import tqdm
 
 
 # 交易日期处理类
@@ -110,14 +111,17 @@ class GenPriceData:
             return price
 
         # ------------------------对每行执行查询---------------------#
+
         for t in DATE_LAGLIST:
+            tqdm.pandas(desc="DATE_LAGLIST L{}".format(t),ncols=85)
+
             self.df_report_db['price_close_l{}'.format(t)] = self.df_report_db[
-                ['stockcode', 'ann_date', 'report_id', ]].apply(
+                ['stockcode', 'ann_date', 'report_id', ]].progress_apply(
                 lambda x: query_price(x, lag_t=t),
                 axis=1)
 
         # ------------------------入库---------------------#
-
+        # self.df_report_db.dropna(inplace=True)
         self.SqlObj.insert_table(MYSQL_INSERT_TABLE, self.df_report_db, MYSQL_STRUCT)
 
     # 循环获取所有历史价格
@@ -125,7 +129,7 @@ class GenPriceData:
         while True:
             try:
                 self.get_report_price()
-                print("完成的行：{}".format(self.SqlObj.cur.rowcount))
+                # print("完成的行：{}".format(self.SqlObj.cur.rowcount))
             except Exception as e:
                 print(e)
 
@@ -169,4 +173,4 @@ class GenPriceData:
 # data.get_report_price()
 # data.filter_data()
 # GenDateData().get_trade_table()
-GenPriceData().get_all_price()
+
