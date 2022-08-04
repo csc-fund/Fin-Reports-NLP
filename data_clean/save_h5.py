@@ -1,9 +1,6 @@
 # Reading h5 file
-import time
 
-import pandas as pd
-import numpy as np
-from data_clean.mysql_tool import *
+from tools.mysql_tool import *
 from datetime import datetime as dt
 
 

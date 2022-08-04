@@ -1,11 +1,7 @@
+from data_clean.settings import *
+from tools.mysql_tool import *
 import re
-import time
-
-import numpy as np
-import pandas as pd
-
 from datetime import datetime as dt
-from data_clean.mysql_tool import *
 import tushare as ts
 from tqdm.auto import tqdm
 import math
@@ -25,7 +21,6 @@ class GenDateData:
         # 建表
 
     def get_trade_table(self):
-        from datetime import datetime as dt
         # ---------------------生成交易日期表------------------------ #
         self.TradeTable = self.TuShare.query(api_name='index_daily', ts_code=DATE_SHARE,
                                              start_date=DATE_START, end_date=DATE_END, fields='trade_date')
@@ -61,7 +56,7 @@ class GenPriceData:
         # 本地数据库表
         self.SqlObj = MysqlDao()
         self.df_date_db = self.SqlObj.select_table(DATE_TABLE, ['*'])
-        self.df_report_db = pd.DataFrame
+        self.df_report_db = pd.DataFrame  # 从数据库加载的表
 
         # 实例化Tushare对象
         self.TuShare = ts.pro_api(TUSHARE_AK)
@@ -179,6 +174,7 @@ class GenPriceData:
 
         self.df['title'] = self.df[['title']].apply(lambda x: delete_tag(x) if str(x) != 'nan' else x)
 
+    # def get_
 # -----------------------数据清洗-----------------------#
 
 

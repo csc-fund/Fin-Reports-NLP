@@ -2,12 +2,9 @@
 TUSHARE_AK = '56a12424870cd0953907cde2c660b498c8fe774145b7f17afdc746dd'
 
 # 数据库部分
-MYSQL_HOST = '127.0.0.1'
-MYSQL_NAME = 'root'
-MYSQL_PASSWORD = ''
-MYSQL_DATABASE = 'zyyx'
 MYSQL_TABLENAME = 'rpt_e_a'
 TABLE_NULLPRICE = 'find_null_price'
+VIEW_RETURN = 'view_rpt_price_0_5'
 MYSQL_COLUMN = ["title", "report_id", "report_type",
                 "stockcode", "stock_name",
                 "organ_id", "organ_name",

@@ -6,7 +6,7 @@
 # @Note      :None
 import numpy as np
 
-from data_clean.settings import *
+from tools.settings import *
 import mysql.connector
 import pandas as pd
 
