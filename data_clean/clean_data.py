@@ -138,6 +138,7 @@ class GenPriceData:
         while True:
             try:
                 self.get_report_price()
+                # self.get_tag_base()
                 # print("完成的行：{}".format(self.SqlObj.cur.rowcount))
             except Exception as e:
                 print(e)
@@ -174,6 +175,7 @@ class GenPriceData:
 
         self.df['title'] = self.df[['title']].apply(lambda x: delete_tag(x) if str(x) != 'nan' else x)
 
+    # 基准的打标签算法
     def get_tag_base(self):
         self.df_report_db = self.SqlObj.select_table(VIEW_RETURN, ['*'], )
         df = self.df_report_db
@@ -186,21 +188,28 @@ class GenPriceData:
         # 选择指定长度的数据
 
         # -----------------------------缩尾处理----------------------------#
-        df['title_len'] = df['title'].apply(lambda x: len(str(x)))  # 去掉。
+        df['title_len'] = df['title'].apply(lambda x: len(str(x)))
         lt = df['title_len'].quantile(q=LEFT_TAIL)
         rt = df['title_len'].quantile(q=RIGHT_TAIL)
-        print(lt, rt)
         df = df[(lt <= df['title_len']) & (df['title_len'] <= rt)]  # 缩尾处理
+        print(lt, rt)
 
         # -----------------------------打标签----------------------------#
+        dict_struct = {'report_id': 'INT', 'title': 'VARCHAR(25)', 'PK': 'report_id'}
+        for t in [1, 5]:
+            tag_input = 'return_l{}'.format(t)
+            tag_output = 'TAG_L{}'.format(t)
+            df[tag_output] = df[tag_input].apply(lambda x: 1 if x > 0 else 0)
+            dict_struct.update({tag_output: 'int'})
 
-        self.df_report_db = df
-        print(self.df_report_db)
+        # -----------------------------筛选用于训练的记录----------------------------#
+        tag_column = [i for i in df.columns if 'TAG_L' in str(i)]
+        use_column = ['report_id', 'title'] + tag_column
+        self.df_report_db = df[use_column]
 
+        # -----------------------------入库----------------------------#
+        self.SqlObj.insert_table('TAG_BASE_REPORT', self.df_report_db, dict_struct)
 
-# -----------------------数据清洗-----------------------#
-
-GenPriceData().get_tag_base()
 # -----------------------数据清洗-----------------------#
 # data = GenData()
 # data.get_report_price()
