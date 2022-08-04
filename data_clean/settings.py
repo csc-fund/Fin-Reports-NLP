@@ -22,6 +22,9 @@ MYSQL_STRUCT = {"title": "VARCHAR(150)", "report_id": "INT", "report_type": "INT
                 "PK": "report_id"}
 MYSQL_LIMIT = 500
 
+# 要读取的打好标签的数据
+TABLE_TAG_BASE = 'TAG_BASE_REPORT'
+
 # 日期设置
 DATE_SHARE = '399300.SZ'
 DATE_START = "20050101"

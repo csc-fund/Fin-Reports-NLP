@@ -1,3 +1,5 @@
+import os.path
+
 from data_clean.settings import *
 from tools.mysql_tool import *
 import re
@@ -138,7 +140,7 @@ class GenPriceData:
         while True:
             try:
                 self.get_report_price()
-                # self.get_tag_base()
+                self.get_tag_base()
                 # print("完成的行：{}".format(self.SqlObj.cur.rowcount))
             except Exception as e:
                 print(e)
@@ -208,10 +210,36 @@ class GenPriceData:
         self.df_report_db = df[use_column]
 
         # -----------------------------入库----------------------------#
-        self.SqlObj.insert_table('TAG_BASE_REPORT', self.df_report_db, dict_struct)
+        self.SqlObj.insert_table(TABLE_TAG_BASE, self.df_report_db, dict_struct)
+
+    #     用于训练的标准格式
+    def get_csv_data(self):
+        self.df_report_db = self.SqlObj.select_table(TABLE_TAG_BASE, ['*'])
+
+        # -----------------------参数设置-----------------------#
+        output_path = 'C:/Users/Administrator/Desktop/rpt_report_price/'
+        train_per = 0.7
+        dev_per = 0.2
+        test_per = 1 - train_per - dev_per
+
+        # -----------------------切片-----------------------#
+        df_len = self.df_report_db.shape[0]
+        df_train = self.df_report_db.loc[:int(df_len * train_per), :]
+        df_dev = self.df_report_db.loc[:int(df_len * dev_per), :]
+        df_test = self.df_report_db.loc[:int(df_len * test_per), :]
+
+        # -----------------------文件保存----------------------#
+        if not os.path.exists(output_path):
+            os.makedirs(output_path)
+
+        df_train.to_csv(output_path + 'train.csv')
+        df_dev.to_csv(output_path + 'dev.csv')
+        df_test.to_csv(output_path + 'test.csv')
+
 
 # -----------------------数据清洗-----------------------#
 # data = GenData()
 # data.get_report_price()
 # data.filter_data()
 # GenDateData().get_trade_table()
+GenPriceData().get_csv_data()
