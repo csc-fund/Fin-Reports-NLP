@@ -2,7 +2,3 @@ from data_clean.clean_data import GenPriceData
 
 if __name__ == '__main__':
     GenPriceData().get_tag_base()
-<<<<<<< HEAD
-
-=======
->>>>>>> origin/master
