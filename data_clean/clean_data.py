@@ -59,34 +59,34 @@ class GenPriceData:
         # 本地数据库表
         self.SqlObj = MysqlDao()
         self.df_date_db = self.SqlObj.select_table(DATE_TABLE, ['*'])
-        self.df_report_db = None
+        self.df_report_db = pd.DataFrame
 
         # 实例化Tushare对象
         self.TuShare = ts.pro_api(TUSHARE_AK)
-        self.df_kline_tu = None
+        self.df_kline_tu = pd.DataFrame
 
     # 获取公告后的价格用于打标签
-    def get_report_price(self, lag_t: int):
+    def get_report_price(self):
         # ---------------------从数据库读数据-------------------#
         # 增加新的计算列到数据库
-        self.df_report_db = self.SqlObj.select_table(table_name=MYSQL_TABLENAME,
+        self.df_report_db = self.SqlObj.select_table(table_name=TABLE_NULLPRICE,
                                                      select_column=MYSQL_COLUMN,
-                                                     filter_dict={"LIMIT": MYSQL_LIMIT})
+                                                     filter_dict={'null_flag': 'NULL', "LIMIT": MYSQL_LIMIT})
 
         # ------------------------对每行执行查询---------------------#
-        def query_price(df, LAG_FLAG=False):
+        def query_price(df, lag_t: int):
             # 处理传入参数
             ann_date = df['ann_date']
             code = df['stockcode']
 
             # 要返回的值
-            price = 0
+            price = None
 
             # 先映射到交易日期
             df_tradedate = self.df_date_db[self.df_date_db['date'] == ann_date]
 
             # 如果需要滞后
-            if LAG_FLAG:
+            if lag_t != 0:
                 df_tradedate = df_tradedate['map_tradedate_l{}'.format(lag_t)]
             else:
                 df_tradedate = df_tradedate['map_tradedate']
@@ -94,7 +94,7 @@ class GenPriceData:
             # 保留df中的第一列
             trade_date = df_tradedate.iloc[0]
             # 时间转换为tu查询的格式
-            trade_date = dt.strftime(dt.strptime(trade_date, "%Y-%m-%d").date(), "%Y%m%d")
+            trade_date = dt.strftime(trade_date, "%Y%m%d")
 
             # 网络可能出错
             try:
@@ -110,13 +110,27 @@ class GenPriceData:
             return price
 
         # ------------------------对每行执行查询---------------------#
-        self.df_report_db['close'.format(lag_t)] = self.df_report_db[
-            ['stockcode', 'ann_date', 'report_id', ]].apply(
-            lambda x: query_price(x, LAG_FLAG=False),
-            axis=1)
+        for t in DATE_LAGLIST:
+            self.df_report_db['price_close_l{}'.format(t)] = self.df_report_db[
+                ['stockcode', 'ann_date', 'report_id', ]].apply(
+                lambda x: query_price(x, lag_t=t),
+                axis=1)
 
         # ------------------------入库---------------------#
+
         self.SqlObj.insert_table(MYSQL_INSERT_TABLE, self.df_report_db, MYSQL_STRUCT)
+
+    # 循环获取所有历史价格
+    def get_all_price(self):
+        while True:
+            try:
+                self.get_report_price()
+                print("完成的行：{}".format(self.SqlObj.cur.rowcount))
+            except Exception as e:
+                print(e)
+
+            if self.df_report_db.empty:
+                break
 
     # 筛选有效数据
     def filter_data(self):
@@ -155,4 +169,4 @@ class GenPriceData:
 # data.get_report_price()
 # data.filter_data()
 # GenDateData().get_trade_table()
-GenPriceData().get_report_price(lag_t=1)
+GenPriceData().get_all_price()

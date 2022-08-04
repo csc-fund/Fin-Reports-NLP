@@ -20,7 +20,7 @@ class ReadH5:
     def get_df(self):
         self.keys = self.h5_store.keys()
         self.df_h5 = pd.DataFrame(self.h5_store.get(self.keys[0]))
-        self.df_h5 = self.df_h5.loc[:10, :]
+        # self.df_h5 = self.df_h5.loc[:10, :]
 
     def insert_db(self, table_name):
         if not self.df_h5:
@@ -41,15 +41,3 @@ class ReadH5:
 
 
 ReadH5('D:/BaiduNetdiskDownload/rpt_data.h5').insert_db('rpt_e_a')
-# print(df.columns)
-# df = df.loc[:100, :]
-# df = df.loc[:100, :]
-
-
-# print(df['previous_create_date'])
-# df.fillna('', inplace=True)  # 数据库不能识别 nan
-# self.MergeTable = self.MergeTable.where(self.MergeTable.notnull(), None)
-# time.sleep(11111)
-
-# df.to_csv(path_to)
-# h5_store.close()
