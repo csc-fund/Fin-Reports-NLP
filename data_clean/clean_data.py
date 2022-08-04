@@ -8,6 +8,7 @@ from datetime import datetime as dt
 from data_clean.mysql_tool import *
 import tushare as ts
 from tqdm.auto import tqdm
+import math
 
 
 # 交易日期处理类
@@ -105,6 +106,7 @@ class GenPriceData:
                                                       trade_date=trade_date)
                 price = self.df_kline_tu['close']
 
+
             except Exception as e:
                 print(e, code, trade_date, price, )
 
@@ -113,12 +115,25 @@ class GenPriceData:
         # ------------------------对每行执行查询---------------------#
 
         for t in DATE_LAGLIST:
-            tqdm.pandas(desc="DATE_LAGLIST L{}".format(t),ncols=85)
+            tqdm.pandas(desc="DATE_LAGLIST L{}".format(t), ncols=85)
 
-            self.df_report_db['price_close_l{}'.format(t)] = self.df_report_db[
+            # 定义列名
+            price_start = 'price_l0'
+            price_end = 'price_l{}'.format(t)
+            price_return = 'return_l{}'.format(t)
+
+            # 在API获取
+            self.df_report_db[price_end] = self.df_report_db[
                 ['stockcode', 'ann_date', 'report_id', ]].progress_apply(
                 lambda x: query_price(x, lag_t=t),
                 axis=1)
+            MYSQL_STRUCT.update({price_end: "FLOAT"})
+
+            # 计算收益
+            if t != 0:
+                self.df_report_db[price_return] = self.df_report_db[[price_start, price_end, ]].apply(
+                    lambda x: math.log(x[price_end] / x[price_start]), axis=1)
+                MYSQL_STRUCT.update({price_return: "FLOAT"})
 
         # ------------------------入库---------------------#
         # self.df_report_db.dropna(inplace=True)
@@ -164,7 +179,6 @@ class GenPriceData:
 
         self.df['title'] = self.df[['title']].apply(lambda x: delete_tag(x) if str(x) != 'nan' else x)
 
-
 # -----------------------数据清洗-----------------------#
 
 
@@ -173,4 +187,3 @@ class GenPriceData:
 # data.get_report_price()
 # data.filter_data()
 # GenDateData().get_trade_table()
-
