@@ -101,7 +101,6 @@ class GenPriceData:
                                                       trade_date=trade_date)
                 price = self.df_kline_tu['close']
 
-
             except Exception as e:
                 print(e, code, trade_date, price, )
 
@@ -146,6 +145,7 @@ class GenPriceData:
             if self.df_report_db.empty:
                 break
 
+    #
     # 筛选有效数据
     def filter_data(self):
         # 排除非个股报告
@@ -174,10 +174,33 @@ class GenPriceData:
 
         self.df['title'] = self.df[['title']].apply(lambda x: delete_tag(x) if str(x) != 'nan' else x)
 
-    # def get_
+    def get_tag_base(self):
+        self.df_report_db = self.SqlObj.select_table(VIEW_RETURN, ['*'], )
+        df = self.df_report_db
+
+        # -----------------------------数据清洗和筛选----------------------------#
+        df = df[df['report_type'] != 21]  # 排除非个股报告
+        df = df[df['title'].str.contains('：')]  # 选择有冒号的数据
+        df['title'] = df['title'].apply(lambda x: "".join(str(x).split("：")[1:]))  # 去掉：
+        df['title'] = df['title'].apply(lambda x: str(x).replace('。', '.'))  # 去掉。
+        # 选择指定长度的数据
+
+        # -----------------------------缩尾处理----------------------------#
+        df['title_len'] = df['title'].apply(lambda x: len(str(x)))  # 去掉。
+        lt = df['title_len'].quantile(q=LEFT_TAIL)
+        rt = df['title_len'].quantile(q=RIGHT_TAIL)
+        print(lt, rt)
+        df = df[(lt <= df['title_len']) & (df['title_len'] <= rt)]  # 缩尾处理
+
+        # -----------------------------打标签----------------------------#
+
+        self.df_report_db = df
+        print(self.df_report_db)
+
+
 # -----------------------数据清洗-----------------------#
 
-
+GenPriceData().get_tag_base()
 # -----------------------数据清洗-----------------------#
 # data = GenData()
 # data.get_report_price()

@@ -29,3 +29,7 @@ DATE_END = "20221231"
 DATE_LAGLIST_ALL = [0, 1, 5, 10, 15, 20, 25, 30]
 DATE_LAGLIST = [0, 1, 5]
 DATE_TABLE = 'natural_trade_date'
+
+# 数据处理
+LEFT_TAIL = 0.05
+RIGHT_TAIL = 0.95
