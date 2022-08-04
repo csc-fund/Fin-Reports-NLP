@@ -4,6 +4,7 @@
 # @Time      :2022/8/1 10:19
 # @Author    :Colin
 # @Note      :None
+import numpy as np
 
 from data_clean.settings import *
 import mysql.connector
@@ -284,13 +285,19 @@ class MysqlDao:
 
         def transform_df():
             df = pd.DataFrame(df_values)
-            df = df.where(df.notnull(), None)
+            # 去除nan
+            df = df.astype(object).where(pd.notnull(df), None)
+            df = df.astype(object).where(pd.notna(df), None)
+            df = df.astype(object).where(df != 'nan', None)
+
+            # print(df['previous_create_date'], type(df['previous_create_date'].loc[6]))
+
             # column_str
             column_str = ['`' + i + '`' for i in df.columns]
             column_str = '(' + ','.join(column_str) + ')'
 
             # values_str
-            values_str = ['%s' for i in range(len(df.columns))]
+            values_str = ['%s' for _ in range(len(df.columns))]
             values_str = '(' + ','.join(values_str) + ')'
 
             # tup_values

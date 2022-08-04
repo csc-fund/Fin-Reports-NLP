@@ -14,12 +14,13 @@ MYSQL_COLUMN = ["title", "report_id", "report_type",
                 "ann_date", "current_create_date", "previous_create_date",
                 ]
 MYSQL_INSERT_TABLE = 'rpt_price'
-MYSQL_STRUCT = {"title": 'VARCHAR(150)', "report_id": 'INT', "report_type": 'INT',
-                "stockcode": 'VARCHAR(20)', "stock_name": 'VARCHAR(50)',
-                "organ_id": 'INT', "organ_name": 'VARCHAR(20)',
-                "author": 'VARCHAR(100)',
-                "ann_date": 'DATE', "current_create_date": 'DATE', "previous_create_date": 'DATE',
-                'PK': 'report_id'}
+MYSQL_STRUCT = {"title": "VARCHAR(150)", "report_id": "INT", "report_type": "INT",
+                "stockcode": "VARCHAR(20)", "stock_name": "VARCHAR(50)",
+                "organ_id": "INT", "organ_name": "VARCHAR(20)",
+                "author": "VARCHAR(100)",
+                "current_create_date": "DATE", "previous_create_date": "DATE",
+                "ann_date": "DATE", "entrytime": "DATE",
+                "PK": "report_id"}
 MYSQL_LIMIT = 5
 
 # 日期设置
