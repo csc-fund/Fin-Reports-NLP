@@ -284,6 +284,7 @@ class MysqlDao:
 
         def transform_df():
             df = pd.DataFrame(df_values)
+            df = df.where(df.notnull(), None)
             # column_str
             column_str = ['`' + i + '`' for i in df.columns]
             column_str = '(' + ','.join(column_str) + ')'

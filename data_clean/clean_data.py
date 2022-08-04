@@ -49,7 +49,7 @@ class GenDateData:
             dict_type.update({'map_tradedate_l{}'.format(i): "DATE"})
 
         # ---------------------入库----------------------- #
-        self.MergeTable = self.MergeTable.where(self.MergeTable.notnull(), None)
+        # self.MergeTable = self.MergeTable.where(self.MergeTable.notnull(), None)
         self.SqlObj.insert_table('natural_trade_date', self.MergeTable, dict_type)
 
 
@@ -68,8 +68,7 @@ class GenPriceData:
     # 获取公告后的价格用于打标签
     def get_report_price(self, lag_t: int):
         # ---------------------从数据库读数据-------------------#
-        # # 增加新的计算列到数据库
-        # self.SqlObj.alter_table(MYSQL_TABLENAME, ['price_test', ], {'price_test': "FLOAT"})
+        # 增加新的计算列到数据库
         self.df_report_db = self.SqlObj.select_table(table_name=MYSQL_TABLENAME,
                                                      select_column=MYSQL_COLUMN,
                                                      filter_dict={"LIMIT": MYSQL_LIMIT})
@@ -117,12 +116,7 @@ class GenPriceData:
             axis=1)
 
         # ------------------------入库---------------------#
-
-        print(self.df_report_db)
-        #
-        # self.df_from_tu = self.TuShare.query(api_name='daily',
-        #                                      ts_code='000001.SZ',
-        #                                      trade_date='20180702')
+        self.SqlObj.insert_table(MYSQL_INSERT_TABLE, self.df_report_db, MYSQL_STRUCT)
 
     # 筛选有效数据
     def filter_data(self):
