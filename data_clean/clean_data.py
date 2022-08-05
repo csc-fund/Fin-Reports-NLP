@@ -184,9 +184,20 @@ class GenPriceData:
 
         # -----------------------------数据清洗和筛选----------------------------#
         df = df[df['report_type'] != 21]  # 排除非个股报告
+
         df = df[df['title'].str.contains('：')]  # 选择有冒号的数据
+        df = df[~df['title'].str.contains('_')]  # 去掉_的数据
+
+        # 字符处理
         df['title'] = df['title'].apply(lambda x: "".join(str(x).split("：")[1:]))  # 去掉：
         df['title'] = df['title'].apply(lambda x: str(x).replace('。', '.'))  # 去掉。
+
+        # 主观筛选不包含观点的数据
+        #  '年报点评', '分析报告',
+        exclude_list = ['股东大会', '纪要', '点评', '分析', '简评', '短评', '报告', '快报', '快评']
+        exclude_rule = "|".join(exclude_list)
+        df = df[~df['title'].str.contains(exclude_rule)]
+
         # 选择指定长度的数据
 
         # -----------------------------缩尾处理----------------------------#
@@ -212,6 +223,9 @@ class GenPriceData:
         # -----------------------------入库----------------------------#
         self.SqlObj.insert_table(TABLE_TAG_BASE, self.df_report_db, dict_struct)
 
+        # -----------------------------输出CSV用于训练----------------------------#
+        self.get_csv_data()
+
     #     用于训练的标准格式
     def get_csv_data(self):
         self.df_report_db = self.SqlObj.select_table(TABLE_TAG_BASE, ['*'])
@@ -224,6 +238,9 @@ class GenPriceData:
 
         # -----------------------切片-----------------------#
         df_len = self.df_report_db.shape[0]
+        # 随机排序
+        self.df_report_db.take(np.random.permutation(df_len), axis=0)
+        # 切片
         df_train = self.df_report_db.loc[:int(df_len * train_per), :]
         df_dev = self.df_report_db.loc[:int(df_len * dev_per), :]
         df_test = self.df_report_db.loc[:int(df_len * test_per), :]
@@ -242,4 +259,4 @@ class GenPriceData:
 # data.get_report_price()
 # data.filter_data()
 # GenDateData().get_trade_table()
-GenPriceData().get_csv_data()
+GenPriceData().get_tag_base()
