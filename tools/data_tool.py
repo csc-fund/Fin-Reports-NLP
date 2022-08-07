@@ -45,7 +45,7 @@ class MapTradeDate(BaseDataTool):
         # 合并后的映射表
 
     # 从df映射交易日期date
-    def get_from_df(self, df_input: pd.DataFrame, targrt_column: str, lag_period: list) -> pd.DataFrame:
+    def get_tradedate(self, df_input: pd.DataFrame, targrt_column: str, lag_period: list) -> pd.DataFrame:
         # 初始化列名
         df_input.rename(columns={targrt_column: 'natural_date'}, inplace=True)
         self.INPUT_TABLE = df_input
@@ -63,3 +63,30 @@ class MapTradeDate(BaseDataTool):
         # 返回
         self.OUTPUT_TABLE = merge_table
         return self.OUTPUT_TABLE
+
+    # 继续获取交易日期对应的股票价格
+    def get_price(self):
+        pass
+
+
+# 获取价格信息
+class GetPriceDate(BaseDataTool):
+    def __init__(self):
+        super(GetPriceDate, self).__init__()
+
+    def down_kline(self, code: str):
+        #
+        self.TuShare.query('kline', code=code)
+        # 存储
+        self.OUTPUT_TABLE = None
+        self.OUTPUT_TABLE_STRUCT = {}
+        self.save_to_db('kline')
+
+    def down_all_kline(self):
+        pass
+
+
+# 把日期映射到价格
+class MapDatePrice(BaseDataTool):
+    def __init__(self):
+        super(MapDatePrice, self).__init__()
