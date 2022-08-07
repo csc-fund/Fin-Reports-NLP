@@ -1,5 +1,7 @@
 import os.path
 
+import pandas as pd
+
 from data_clean.settings import *
 from tools.mysql_tool import *
 import re
@@ -7,6 +9,22 @@ from datetime import datetime as dt
 import tushare as ts
 from tqdm.auto import tqdm
 import math
+
+
+# 基础类
+class GenBaseData:
+    def __init__(self, data_base):
+        # 本地数据库连接工具
+        self.SqlObj = MysqlDao(dataBase=data_base)
+        self.df_sql = pd.DataFrame()
+
+        # 在线API工具
+        self.TuShare = ts.pro_api(TUSHARE_AK)
+        self.df_api = pd.DataFrame()
+
+        # 输入和输出数据
+        self.INPUT_TABLE = pd.DataFrame()
+        self.OUTPUT_TABLE = pd.DataFrame()
 
 
 # 交易日期处理类
@@ -54,6 +72,7 @@ class GenDateData:
 
 # 语言处理类
 class GenPriceData:
+    # 初始化
     def __init__(self):
         # 本地数据库表
         self.SqlObj = MysqlDao()
@@ -254,9 +273,29 @@ class GenPriceData:
         df_test.to_csv(output_path + 'test.csv')
 
 
+# 打标签的类
+class GenTag(GenBaseData):
+    def __init__(self, data_base, input_table, target_column):
+        """
+        :param data_base:
+        :param input_table:
+        :param target_column:要打标签的目标列
+        """
+        super().__init__(data_base)
+
+        # 要打标签的数据 df
+        self.INPUT_TABLE = self.SqlObj.select_table(input_table, target_column)
+
+    # 传入要赋予标签的列
+    def get_tag(self):
+        print(self.INPUT_TABLE)
+        self.OUTPUT_TABLE = None
+
 # -----------------------数据清洗-----------------------#
 # data = GenData()
 # data.get_report_price()
 # data.filter_data()
 # GenDateData().get_trade_table()
-GenPriceData().get_tag_base()
+# GenPriceData().get_tag_base()
+GenTag('zyyx','')
+
