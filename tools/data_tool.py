@@ -82,8 +82,11 @@ class GetPriceDate(BaseDataTool):
         self.OUTPUT_TABLE_STRUCT = {}
         self.save_to_db('kline')
 
-    def down_all_kline(self):
-        pass
+    def down_all_kline(self, df_input: pd.DataFrame, traget_column):
+        # 从df的某一列获取
+        code_list = df_input[traget_column].unique().tolist()
+        for i in code_list:
+            self.down_kline(code_list)
 
 
 # 把日期映射到价格
