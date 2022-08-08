@@ -4,15 +4,15 @@
 # @Time      :2022/8/7 20:47
 # @Author    :Colin
 # @Note      :None
+import hashlib
 import math
-import time
 
-from tools.settings import *
-from tools.mysql_tool import MysqlDao
 import pandas as pd
 import tushare as ts
-from datetime import datetime as dt
-from tqdm import tqdm, trange
+from tqdm import tqdm
+
+from tools.mysql_tool import MysqlDao
+from tools.settings import *
 
 
 # 基础的数据类
@@ -115,7 +115,9 @@ class MapTradeDate(BaseDataTool):
         self.DATE_TABLE = self.SqlObj.select_table(natural_table, ['date', 'map_tradedate'])
 
         # 要获得价格的表
-        self.INPUT_TABLE = self.SqlObj.select_table(input_table, input_column, {'LIMIT': 100})
+        self.INPUT_TABLE = self.SqlObj.select_table(input_table, input_column, )
+        # {'LIMIT': '100'}
+        self.CODE_TABLE = pd.DataFrame()
 
         # 命名规范
         self.CODE_COLUMN = 'CODE'
@@ -174,7 +176,7 @@ class MapTradeDate(BaseDataTool):
 
     # 从指定日期获得价格
     # 输入为一个df,包含了自然日期的列,期望增加滞前滞后的价格列
-    def get_price(self, ):
+    def get_tag(self, ):
         # ------------------ 初始化 ------------------------#
         self.OUTPUT_TABLE = pd.DataFrame()
 
@@ -184,7 +186,7 @@ class MapTradeDate(BaseDataTool):
         # ------------------ 在股票代码中循环 ------------------------#
         price_table = pd.DataFrame()
         for code in tqdm(self.OUTPUT_TABLE[self.CODE_COLUMN].unique().tolist()):
-            df_code = self.OUTPUT_TABLE.loc[self.OUTPUT_TABLE[self.CODE_COLUMN] == code, :].copy()
+            self.CODE_TABLE = self.OUTPUT_TABLE.loc[self.OUTPUT_TABLE[self.CODE_COLUMN] == code, :].copy()
 
             # ------------------ 根据交易日期查找价格 ------------------------#
             # 获取历史记录
@@ -196,20 +198,56 @@ class MapTradeDate(BaseDataTool):
             for i in self.LAG_PERIOD:
                 lag_column = 'close_l{}'.format(i)
                 df_code_history[lag_column] = df_code_history['close'].shift(-i)
-                self.OUTPUT_TABLE_STRUCT.update({lag_column: 'FLOAT'})
 
             # 连接
-            df_code = pd.merge(df_code, df_code_history,
-                               how='left', on=[self.DATE_COLUMN_T])
+            self.CODE_TABLE = pd.merge(self.CODE_TABLE, df_code_history,
+                                       how='left', on=[self.DATE_COLUMN_T])
+
+            # ------------------ 分片插入 ------------------------#
+            self.CODE_TABLE.dropna(inplace=True)
+            if self.CODE_TABLE.empty:
+                continue
+
+            # ------------------ 打标签 ------------------------#
+            self.CODE_TABLE['RETURN_-1_1'] = self.CODE_TABLE[['close_l-1', 'close_l1']].apply(
+                lambda x: (math.log(x['close_l1'] / x['close_l-1']) * 100), axis=1
+            )
+
+            def return_tag(df_x):
+                if df_x == 0:
+                    return 0
+                elif df_x > 0:
+                    return 1
+                else:
+                    return -1
+
+            self.CODE_TABLE['TAG_-1_1'] = self.CODE_TABLE[['RETURN_-1_1']].apply(
+                lambda x: return_tag(x['RETURN_-1_1']), axis=1)
+
+            # ------------------入库-----------------------  #
+            # 转换ID
+            self.CODE_TABLE['ID_MD5'] = self.CODE_TABLE[['CODE', 'DATE_N']].apply(
+                lambda x: str(x['CODE']).strip() + str(x['DATE_N']).strip(), axis=1)
+            self.CODE_TABLE['ID_MD5'] = self.CODE_TABLE['ID_MD5'].apply(
+                lambda x: hashlib.md5(x.encode('UTF-8')).hexdigest())
+
+            # 入库结构
+            self.OUTPUT_TABLE_STRUCT = {i: 'FLOAT' for i in self.CODE_TABLE.columns}
+            self.OUTPUT_TABLE_STRUCT.update(
+                {'CODE': 'VARCHAR(20)', 'title': 'VARCHAR(30)',
+                 'DATE_N': 'DATE', 'DATE_T': 'DATE', 'ID_MD5': 'VARCHAR(150)', 'PK': 'ID_MD5'
+                 })
+
+            self.SqlObj.insert_table('rpt_price', self.CODE_TABLE, self.OUTPUT_TABLE_STRUCT, )
 
             # ------------------ 拼接所有的code子表 ------------------------#
-            price_table = pd.concat([price_table, df_code], ignore_index=True, axis=0)
+            # price_table = pd.concat([price_table, df_code], ignore_index=True, axis=0)
 
         # ------------------入库-----------------------  #
-        self.OUTPUT_TABLE = price_table
+        # self.OUTPUT_TABLE = price_table
 
     # 计算收益和标签
-    def get_tag(self):
+    def get_tag1(self):
         # ------------------数据筛选-----------------------  #
         self.clean_data()
         # ------------------获得价格-----------------------  #
@@ -218,7 +256,7 @@ class MapTradeDate(BaseDataTool):
 
         # ------------------打标签算法-----------------------  #
         self.OUTPUT_TABLE['RETURN_-1_1'] = self.OUTPUT_TABLE[['close_l-1', 'close_l1']].apply(
-            lambda x: math.log(x['close_l1'] / x['close_l-1']), axis=1
+            lambda x: math.log(x['close_l1'] / x['close_l-1']) * 100, axis=1
         )
 
         def return_tag(df_x):
@@ -233,4 +271,10 @@ class MapTradeDate(BaseDataTool):
             lambda x: return_tag(x['RETURN_-1_1']), axis=1)
 
         # ------------------入库-----------------------  #
+        self.OUTPUT_TABLE_STRUCT = {i: 'FLOAT' for i in self.OUTPUT_TABLE.columns}
+        self.OUTPUT_TABLE_STRUCT.update(
+            {'CODE': 'VARCHAR(20)', 'title': 'VARCHAR(30)',
+             'DATE_N': 'DATE', 'DATE_T': 'DATE',
+             })
+
         self.save_to_db('rpt_price')
