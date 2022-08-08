@@ -4,6 +4,8 @@
 # @Time      :2022/8/1 10:19
 # @Author    :Colin
 # @Note      :None
+import time
+
 import numpy as np
 
 from tools.settings import *
@@ -255,26 +257,28 @@ class MysqlDao:
             # 主键处理
             pk_flag = 'PK'
 
-            colum_list = ['`' + i + '`' + ' ' + j for i, j in column_dict.items() if i != pk_flag]
+            colum_list = ['`{}` {}'.format(i, j) for i, j in column_dict.items() if i != pk_flag]
 
             # 主键追加NOT NULL
             if pk_flag in column_dict.keys():
                 pk_column = column_dict[pk_flag]
                 column_dict[pk_column] = column_dict[pk_column] + ' NOT NULL'
-                colum_list += ['PRIMARY KEY ' + '(`' + column_dict[pk_flag] + '`)']
+                # 创建PK
+                colum_list += ['PRIMARY KEY (`{}`)'.format(pk_column)]
+                # 创建唯一索引
+                colum_list += ['UNIQUE ix_pk (`{}`)'.format(pk_column)]
 
+            # 连起来
             colum_str = '(' + ','.join(colum_list) + ')'
 
             # 去掉连续逗号
-            # print(colum_str)
             colum_str = colum_str.replace(',,', ',')
 
             return colum_str
 
         def excute():
             sql_column = transform_dict()
-
-            sql = ("CREATE TABLE IF NOT EXISTS {0} {1}".format('`' + table_name + '`', sql_column)
+            sql = ("CREATE TABLE IF NOT EXISTS `{table}` {attr}".format(table=table_name, attr=sql_column)
                    )
             self.excute_sql(sql)
 
@@ -285,7 +289,7 @@ class MysqlDao:
 
         def transform_df():
             df = pd.DataFrame(df_values)
-            # 去除nan
+            # ------------------去除nan-----------------#
             df = df.astype(object).where(pd.notnull(df), None)
             df = df.astype(object).where(pd.notna(df), None)
             df = df.astype(object).where(df != 'nan', None)

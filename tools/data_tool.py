@@ -96,6 +96,7 @@ class GetPriceData(BaseDataTool):
         for date in date_list:
             # 前复权
             self.df_api = self.TS.pro_bar(ts_code=code, start_date=date, adj='qfq')
+
             # 重构索引
             self.df_api.set_index(['trade_date'], inplace=True)
             # 两个dataframe合并
@@ -103,12 +104,17 @@ class GetPriceData(BaseDataTool):
 
         # 检查去重
         self.OUTPUT_TABLE = self.OUTPUT_TABLE.drop_duplicates()
+        self.OUTPUT_TABLE.reset_index(inplace=True)
+
         # 存储
-        self.OUTPUT_TABLE_STRUCT = {'ts_code': 'VARCHAR(20)', 'open': 'FLOAT', 'high': 'FLOAT',
+        self.OUTPUT_TABLE_STRUCT = {'trade_date': 'DATE', 'ts_code': 'VARCHAR(20)', 'open': 'FLOAT', 'high': 'FLOAT',
                                     'low': 'FLOAT', 'close': 'FLOAT', 'pre_close': 'FLOAT', 'change': 'FLOAT',
-                                    'pct_chg': 'FLOAT', 'vol': 'FLOAT', 'amount': 'FLOAT'}
+                                    'pct_chg': 'FLOAT', 'vol': 'FLOAT', 'amount': 'FLOAT',
+                                    'PK': 'trade_date'}
 
         self.save_to_db('{}'.format(code))
+
+        time.sleep(11111)
 
         # 下载所有的股票代码Kline
 
@@ -121,6 +127,7 @@ class GetPriceData(BaseDataTool):
         code_list = data_tool.df_select['stockcode'].unique().tolist()
         # print(len(code_list))
         for i in tqdm(code_list):
+            # print(i)
             self.down_kline(i)
 
     # 把日期映射到价格
