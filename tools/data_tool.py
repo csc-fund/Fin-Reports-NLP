@@ -34,6 +34,10 @@ class BaseDataTool:
         self.OUTPUT_TABLE = pd.DataFrame()
         self.OUTPUT_TABLE_STRUCT = {}
 
+        # 数据清洗
+        self.LEFT_TAIL = 0.05
+        self.RIGHT_TAIL = 0.95
+
     # 存储数据
     def save_to_db(self, table_name: str):
         self.SqlObj.insert_table(table_name, self.OUTPUT_TABLE, self.OUTPUT_TABLE_STRUCT)
@@ -134,6 +138,31 @@ class MapTradeDate(BaseDataTool):
 
     # 清洗数据
     def clean_data(self):
+        df = self.INPUT_TABLE
+        # -----------------------------数据清洗和筛选----------------------------#
+        df = df[df['report_type'] != 21]  # 排除非个股报告
+
+        df = df[df['title'].str.contains('：')]  # 选择有冒号的数据
+        df = df[~df['title'].str.contains('_')]  # 去掉_的数据
+
+        # 字符处理
+        df['title'] = df['title'].apply(lambda x: "".join(str(x).split("：")[1:]))  # 去掉：
+        df['title'] = df['title'].apply(lambda x: str(x).replace('。', '.'))  # 去掉。
+
+        # 主观筛选不包含观点的数据
+        #  '年报点评', '分析报告',
+        exclude_list = ['股东大会', '纪要', '点评', '分析', '简评', '短评', '报告', '快报', '快评']
+        exclude_rule = "|".join(exclude_list)
+        df = df[~df['title'].str.contains(exclude_rule)]
+
+        # -----------------------------长度缩尾处理----------------------------#
+        df['title_len'] = df['title'].apply(lambda x: len(str(x)))
+        lt = df['title_len'].quantile(q=self.LEFT_TAIL)
+        rt = df['title_len'].quantile(q=self.RIGHT_TAIL)
+        df = df[(lt <= df['title_len']) & (df['title_len'] <= rt)]  # 缩尾处理
+
+        # -----------------------------保存----------------------------#
+        self.OUTPUT_TABLE = df
 
     # 从df映射交易日期date
     def get_tradedate(self):
@@ -182,9 +211,10 @@ class MapTradeDate(BaseDataTool):
     # 计算收益和标签
     def get_tag(self):
         # ------------------数据筛选-----------------------  #
-
+        self.clean_data()
         # ------------------获得价格-----------------------  #
         self.get_price()
+        self.OUTPUT_TABLE.dropna(inplace=True)
 
         # ------------------打标签算法-----------------------  #
         self.OUTPUT_TABLE['RETURN_-1_1'] = self.OUTPUT_TABLE[['close_l-1', 'close_l1']].apply(
