@@ -125,6 +125,7 @@ class MapTradeDate(BaseDataTool):
 
     # 从df映射交易日期date
     def get_tradedate(self, date_column: str):
+
         # 初始化列名
         self.INPUT_TABLE.rename(columns={date_column: 'natural_date'}, inplace=True)
         # 通过左连接映射traget_column
