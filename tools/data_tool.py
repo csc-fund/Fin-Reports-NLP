@@ -116,16 +116,16 @@ class GetPriceData(BaseDataTool):
 
         time.sleep(11111)
 
-        # 下载所有的股票代码Kline
-
-    def down_all_kline(self):
+    # 下载所有的股票代码Kline,参照的表
+    def down_all_kline(self, database, table, column):
         # 获取股票列表
-        data_tool = BaseDataTool(data_base='zyyx')
-        data_tool.df_select = data_tool.SqlObj.select_table('rpt_earnings_adjust', ['stockcode'])
+        data_tool = BaseDataTool(data_base=database)
+        data_tool.df_select = data_tool.SqlObj.select_table(table, [column])
 
         # 从df的某一列获取
-        code_list = data_tool.df_select['stockcode'].unique().tolist()
-        # print(len(code_list))
+        code_list = data_tool.df_select[column].unique().tolist()
+
+        # 循环
         for i in tqdm(code_list):
             # print(i)
             self.down_kline(i)
@@ -138,4 +138,4 @@ class MapDatePrice(BaseDataTool):
         super(MapDatePrice, self).__init__()
 
 
-GetPriceData(data_base='tushare_daily').down_all_kline()
+GetPriceData(data_base='tushare_daily').down_all_kline('zyyx', 'rpt_earnings_adjust', 'stockcode')
