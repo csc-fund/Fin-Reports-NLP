@@ -97,69 +97,72 @@ class GetPriceData(BaseDataTool):
 # 用于映射指定公告的价格
 class MapTradeDate(BaseDataTool):
     #
-    def __init__(self, input_table: str, input_column: list, natural_table='natural_trade_date', ):
-        super().__init__(data_base='zyyx')
+    def __init__(self, data_base, input_table: str, input_column: list, natural_table='natural_trade_date', ):
+
+        super().__init__(data_base=data_base)
 
         # 自然日期表
         self.natural_table = pd.DataFrame()
 
         # 用于参考的日期映射表
-        self.date_table = self.SqlObj.select_table(natural_table, ['date', 'map_tradedate'])
-        self.date_table.rename(columns={'date': 'natural_date'}, inplace=True)
+        self.DATE_TABLE = self.SqlObj.select_table(natural_table, ['date', 'map_tradedate'])
 
         # 要获得价格的表
-        self.INPUT_TABLE = self.SqlObj.select_table(input_table, input_column)
+        self.INPUT_TABLE = self.SqlObj.select_table(input_table, input_column, {'LIMIT': 10})
 
         # 命名规范
         self.CODE_COLUMN = 'CODE'
-        self.DATE_COLUM = 'DATE'
+        self.DATE_COLUMN = 'DATE_N'
+        self.DATE_COLUMN_T = 'DATE_T'
 
         # 关键列的位置
         self.INPUT_TABLE.rename(columns={input_column[0]: self.CODE_COLUMN,
-                                         input_column[1]: self.DATE_COLUM},
+                                         input_column[1]: self.DATE_COLUMN},
                                 inplace=True)
+
+        self.DATE_TABLE.rename(columns={'date': self.DATE_COLUMN}, inplace=True)
 
     # 创建一个自然日期表
     def get_naturaldate(self, start_date, end_date):
         self.natural_table = pd.DataFrame(pd.date_range(start=start_date, end=end_date))
 
     # 从df映射交易日期date
-    def get_tradedate(self, date_column: str):
-
-        # 初始化列名
-        self.INPUT_TABLE.rename(columns={date_column: 'natural_date'}, inplace=True)
+    def get_tradedate(self):
         # 通过左连接映射traget_column
-        self.OUTPUT_TABLE = pd.merge(self.INPUT_TABLE, self.date_table,
-                                     how='left', on=['natural_date'])
-
-        self.OUTPUT_TABLE_STRUCT.update({'map_tradedate': 'DATE'})
+        self.OUTPUT_TABLE = pd.merge(self.INPUT_TABLE, self.DATE_TABLE,
+                                     how='left', on=[self.DATE_COLUMN])
+        self.OUTPUT_TABLE.rename(columns={'map_tradedate': self.DATE_COLUMN_T}, inplace=True)
+        self.OUTPUT_TABLE_STRUCT.update({self.DATE_COLUMN_T: 'DATE'})
 
     # 从指定日期获得价格
     # 输入为一个df,包含了自然日期的列,期望增加滞前滞后的价格列
-    def get_price(self, code_column: str, date_column: str, lag_period: list):
+    def get_price(self, lag_period: list):
         # ------------------ 初始化 ------------------------#
         self.OUTPUT_TABLE = None
 
         # ------------------ 增加交易日期列 ------------------------#
-        self.get_tradedate(date_column)
+        self.get_tradedate()
 
         # ------------------ 在股票代码中循环 ------------------------#
-        for code in self.INPUT_TABLE[code_column].unique().tolist():
-            df_code = self.INPUT_TABLE[self.INPUT_TABLE[code_column] == code].copy()
+        for code in self.OUTPUT_TABLE[self.CODE_COLUMN].unique().tolist():
+            df_code = self.OUTPUT_TABLE.loc[self.OUTPUT_TABLE[self.CODE_COLUMN] == code, :].copy()
 
             # ------------------ 根据交易日期查找价格 ------------------------#
             # 获取历史记录
-            df_code_history = BaseDataTool(data_base='tushare_daily').SqlObj.select_table('code',
+            df_code_history = BaseDataTool(data_base='tushare_daily').SqlObj.select_table(code,
                                                                                           ['trade_date', 'close'])
+            df_code_history.rename(columns={'trade_date': self.DATE_COLUMN_T}, inplace=True)
+
             # 循环滞后
             for i in lag_period:
                 lag_column = 'close_l{}'.format(i)
-                df_code_history[lag_column] = df_code_history.shift(i)
+                df_code_history[lag_column] = df_code_history['close'].shift(i)
                 self.OUTPUT_TABLE_STRUCT.update({lag_column: 'FLOAT'})
 
             # 连接
             df_code = pd.merge(df_code, df_code_history,
-                               how='left', on=['trade_date'])
+                               how='left', on=[self.DATE_COLUMN_T])
 
             # ------------------ 拼接所有的code子表 ------------------------#
             self.OUTPUT_TABLE = pd.concat([self.OUTPUT_TABLE, df_code])
+            print(self.OUTPUT_TABLE)
