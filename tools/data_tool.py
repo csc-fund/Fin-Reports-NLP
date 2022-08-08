@@ -6,8 +6,10 @@
 # @Note      :None
 import hashlib
 import math
+import os
 
 import pandas as pd
+import numpy as np
 import tushare as ts
 from tqdm import tqdm
 
@@ -99,9 +101,8 @@ class GetPriceData(BaseDataTool):
             self.down_kline(i)
 
 
-# 用于映射交易日期的类
-# 用于映射指定公告的价格
-class MapTradeDate(BaseDataTool):
+# 用于打标签
+class GetLabelDate(BaseDataTool):
     #
     def __init__(self, data_base, input_table: str, input_column: list, lag_period: list,
                  natural_table='natural_trade_date', ):
@@ -216,6 +217,7 @@ class MapTradeDate(BaseDataTool):
                 lambda x: (math.log(x['close_l1'] / x['close_l-1']) * 100), axis=1
             )
 
+            # 打标签的算法
             def return_tag(df_x):
                 if df_x == 0:
                     return 0
@@ -249,35 +251,30 @@ class MapTradeDate(BaseDataTool):
         # ------------------入库-----------------------  #
         # self.OUTPUT_TABLE = price_table
 
-    # 计算收益和标签
-    def get_tag1(self):
-        # ------------------数据筛选-----------------------  #
-        self.clean_data()
-        # ------------------获得价格-----------------------  #
-        self.get_price()
-        self.OUTPUT_TABLE.dropna(inplace=True)
+    # 输出用于训练的数据
+    def get_csv(self):
+        # -----------------------读取数据-----------------------#
+        self.OUTPUT_TABLE = self.SqlObj.select_table('rpt_price', ['TAG_-1_1', 'title'])
 
-        # ------------------打标签算法-----------------------  #
-        self.OUTPUT_TABLE['RETURN_-1_1'] = self.OUTPUT_TABLE[['close_l-1', 'close_l1']].apply(
-            lambda x: math.log(x['close_l1'] / x['close_l-1']) * 100, axis=1
-        )
+        # -----------------------参数设置-----------------------#
+        output_path = 'C:/Users/Administrator/Desktop/rpt_report_price/'
+        train_per = 0.8
+        dev_per = 0.1
+        test_per = 1 - train_per - dev_per
 
-        def return_tag(df_x):
-            if df_x == 0:
-                return 0
-            elif df_x > 0:
-                return 1
-            else:
-                return -1
+        # -----------------------切片-----------------------#
+        df_len = self.OUTPUT_TABLE.shape[0]
+        # 随机排序
+        self.OUTPUT_TABLE.take(np.random.permutation(df_len), axis=0)
+        # 切片
+        df_train = self.OUTPUT_TABLE.loc[:int(df_len * train_per), :]
+        df_dev = self.OUTPUT_TABLE.loc[:int(df_len * dev_per), :]
+        df_test = self.OUTPUT_TABLE.loc[:int(df_len * test_per), :]
 
-        self.OUTPUT_TABLE['TAG_-1_1'] = self.OUTPUT_TABLE[['RETURN_-1_1']].apply(
-            lambda x: return_tag(x['RETURN_-1_1']), axis=1)
+        # -----------------------文件保存----------------------#
+        if not os.path.exists(output_path):
+            os.makedirs(output_path)
 
-        # ------------------入库-----------------------  #
-        self.OUTPUT_TABLE_STRUCT = {i: 'FLOAT' for i in self.OUTPUT_TABLE.columns}
-        self.OUTPUT_TABLE_STRUCT.update(
-            {'CODE': 'VARCHAR(20)', 'title': 'VARCHAR(30)',
-             'DATE_N': 'DATE', 'DATE_T': 'DATE',
-             })
-
-        self.save_to_db('rpt_price')
+        df_train.to_csv(output_path + 'train.csv')
+        df_dev.to_csv(output_path + 'dev.csv')
+        df_test.to_csv(output_path + 'test.csv')
