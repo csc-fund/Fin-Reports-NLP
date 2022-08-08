@@ -256,6 +256,13 @@ class GetLabelDate(BaseDataTool):
         # -----------------------读取数据-----------------------#
         self.OUTPUT_TABLE = self.SqlObj.select_table('rpt_price', ['TAG_-1_1', 'title'])
 
+        # self.OUTPUT_TABLE[self.OUTPUT_TABLE['TAG_-1_1']==0
+        index_drop = self.OUTPUT_TABLE[self.OUTPUT_TABLE['TAG_-1_1'] == 0].index
+        self.OUTPUT_TABLE.drop(index=index_drop, inplace=True)
+
+        self.OUTPUT_TABLE['TAG_-1_1'] = self.OUTPUT_TABLE['TAG_-1_1'].apply(
+            lambda x: 0 if x == -1 else 1)
+
         # -----------------------参数设置-----------------------#
         output_path = 'C:/Users/Administrator/Desktop/rpt_report_price/'
         train_per = 0.8
