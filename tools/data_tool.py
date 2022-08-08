@@ -97,8 +97,11 @@ class GetPriceData(BaseDataTool):
             # 前复权
             self.df_api = self.TS.pro_bar(ts_code=code, start_date=date, adj='qfq')
 
-            # 重构索引
-            self.df_api.set_index(['trade_date'], inplace=True)
+            # 返回值不为空
+            if self.df_api is not None:
+                # 重构索引
+                self.df_api.set_index(['trade_date'], inplace=True)
+
             # 两个dataframe合并
             self.OUTPUT_TABLE = pd.concat([self.OUTPUT_TABLE, self.df_api])
 
@@ -114,8 +117,6 @@ class GetPriceData(BaseDataTool):
 
         self.save_to_db('{}'.format(code))
 
-        time.sleep(11111)
-
     # 下载所有的股票代码Kline,参照的表
     def down_all_kline(self, database, table, column):
         # 获取股票列表
@@ -124,9 +125,14 @@ class GetPriceData(BaseDataTool):
 
         # 从df的某一列获取
         code_list = data_tool.df_select[column].unique().tolist()
+        code_list = [str(i).lower() for i in code_list]
+
+        # 去除已经下载的表
+        saved_table = BaseDataTool(data_base='tushare_daily').SqlObj.show_tables()
+        down_table = [i for i in code_list if i not in saved_table]
 
         # 循环
-        for i in tqdm(code_list):
+        for i in tqdm(down_table):
             # print(i)
             self.down_kline(i)
 
@@ -136,6 +142,3 @@ class GetPriceData(BaseDataTool):
 class MapDatePrice(BaseDataTool):
     def __init__(self):
         super(MapDatePrice, self).__init__()
-
-
-GetPriceData(data_base='tushare_daily').down_all_kline('zyyx', 'rpt_earnings_adjust', 'stockcode')
