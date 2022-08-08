@@ -164,7 +164,7 @@ class MapTradeDate(BaseDataTool):
         df = df[(lt <= df['title_len']) & (df['title_len'] <= rt)]  # 缩尾处理
 
         # -----------------------------保存----------------------------#
-        self.OUTPUT_TABLE = df
+        self.INPUT_TABLE = df
 
     # 从df映射交易日期date
     def get_tradedate(self):
@@ -179,6 +179,9 @@ class MapTradeDate(BaseDataTool):
     def get_tag(self, ):
         # ------------------ 初始化 ------------------------#
         self.OUTPUT_TABLE = pd.DataFrame()
+
+        # ------------------数据筛选-----------------------  #
+        self.clean_data()
 
         # ------------------ 增加交易日期列 ------------------------#
         self.get_tradedate()
