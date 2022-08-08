@@ -194,6 +194,7 @@ class GenPriceData:
             s = re.sub(r6, '', s)
             return s
 
+
         self.df['title'] = self.df[['title']].apply(lambda x: delete_tag(x) if str(x) != 'nan' else x)
 
     # 基准的打标签算法

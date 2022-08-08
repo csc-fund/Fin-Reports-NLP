@@ -15,16 +15,16 @@ import pandas as pd
 
 class MysqlDao:
     # 初始化
-    def __init__(self, host=MYSQL_HOST, userName=MYSQL_NAME, userPsd=MYSQL_PASSWORD, dataBase=MYSQL_DATABASE):
+    def __init__(self, host=MYSQL_HOST, user_name=MYSQL_NAME, user_psd=MYSQL_PASSWORD, data_base=MYSQL_DATABASE):
         self.host = host
-        self.userName = userName
-        self.userPsd = userPsd
-        self.dataBase = dataBase
+        self.user_name = user_name
+        self.user_psd = user_psd
+        self.data_base = data_base
 
         # 建立连接
-        self.cnx = mysql.connector.connect(user=self.userName, password=self.userPsd,
+        self.cnx = mysql.connector.connect(user=self.user_name, password=self.user_psd,
                                            host=self.host,
-                                           database=self.dataBase)
+                                           database=self.data_base)
 
         # 获取游标
         self.cur = self.cnx.cursor(buffered=True)
@@ -175,7 +175,6 @@ class MysqlDao:
                 if type_dict is not None:
                     column_dict.update(type_dict)
                 self.create_table(check_table, column_dict)
-
 
             # if check_table not in table_list:
             #     column_dict = {i: 'VARCHAR(255)' for i in check_column}
