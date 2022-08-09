@@ -102,7 +102,7 @@ class GetPriceData(BaseDataTool):
 
 
 # 用于打标签
-class GetLabelDate(BaseDataTool):
+class GetLabelData(BaseDataTool):
     #
     def __init__(self, data_base, input_table: str, input_column: list, lag_period: list,
                  natural_table='natural_trade_date', ):
@@ -163,6 +163,7 @@ class GetLabelDate(BaseDataTool):
         lt = df['title_len'].quantile(q=self.LEFT_TAIL)
         rt = df['title_len'].quantile(q=self.RIGHT_TAIL)
         df = df[(lt <= df['title_len']) & (df['title_len'] <= rt)]  # 缩尾处理
+        print(lt, rt)
 
         # -----------------------------保存----------------------------#
         self.INPUT_TABLE = df
@@ -188,7 +189,7 @@ class GetLabelDate(BaseDataTool):
         self.get_tradedate()
 
         # ------------------ 在股票代码中循环 ------------------------#
-        price_table = pd.DataFrame()
+
         for code in tqdm(self.OUTPUT_TABLE[self.CODE_COLUMN].unique().tolist()):
             self.CODE_TABLE = self.OUTPUT_TABLE.loc[self.OUTPUT_TABLE[self.CODE_COLUMN] == code, :].copy()
 
@@ -211,25 +212,38 @@ class GetLabelDate(BaseDataTool):
             self.CODE_TABLE.dropna(inplace=True)
             if self.CODE_TABLE.empty:
                 continue
-
             # ------------------ 打标签 ------------------------#
-            self.CODE_TABLE['RETURN_-1_1'] = self.CODE_TABLE[['close_l-1', 'close_l1']].apply(
-                lambda x: (math.log(x['close_l1'] / x['close_l-1']) * 100), axis=1
-            )
+            # 不同组合的标签打法
+            for start_i in self.LAG_PERIOD:
+                for end_i in [i for i in self.LAG_PERIOD if i > start_i]:
+                    # 命名
+                    rtn_column = 'RETURN_{}_{}'.format(start_i, end_i)
+                    tag_column = 'TAG_{}_{}'.format(start_i, end_i)
+                    close_end = 'close_l{}'.format(end_i)
+                    close_start = 'close_l{}'.format(start_i)
 
-            # 打标签的算法
-            def return_tag(df_x):
-                if df_x == 0:
-                    return 0
-                elif df_x > 0:
-                    return 1
-                else:
-                    return -1
+                    # 收益算法
+                    self.CODE_TABLE[rtn_column] = self.CODE_TABLE[[close_start, close_end]].apply(
+                        lambda x: (math.log(x[close_end] / x[close_start]) * 100), axis=1
+                    )
 
-            self.CODE_TABLE['TAG_-1_1'] = self.CODE_TABLE[['RETURN_-1_1']].apply(
-                lambda x: return_tag(x['RETURN_-1_1']), axis=1)
+                    # 打标签的算法
+                    def return_tag(df_x):
+                        if df_x > 0:
+                            return 0
+                        elif df_x < 0:
+                            return 1
+                        else:
+                            return 2
+
+                    self.CODE_TABLE[tag_column] = self.CODE_TABLE[[rtn_column]].apply(
+                        lambda x: return_tag(x[rtn_column]), axis=1)
 
             # ------------------入库-----------------------  #
+            # 生成合成title
+            self.CODE_TABLE['TITLE_ALL'] = self.CODE_TABLE[['report_year', 'organ_name', 'author']].apply(
+                lambda x: str(x['report_year']) + str(x['organ_name']) + str(x['author']) + str(x['title']), axis=1)
+
             # 转换ID
             self.CODE_TABLE['ID_MD5'] = self.CODE_TABLE[['CODE', 'DATE_N']].apply(
                 lambda x: str(x['CODE']).strip() + str(x['DATE_N']).strip(), axis=1)
@@ -254,7 +268,7 @@ class GetLabelDate(BaseDataTool):
     # 输出用于训练的数据
     def get_csv(self):
         # -----------------------读取数据-----------------------#
-        self.OUTPUT_TABLE = self.SqlObj.select_table('rpt_price', ['TAG_-1_1', 'title'])
+        self.OUTPUT_TABLE = self.SqlObj.select_table('rpt_price', ['TAG_-1_1', 'title'], )
 
         # self.OUTPUT_TABLE[self.OUTPUT_TABLE['TAG_-1_1']==0
         index_drop = self.OUTPUT_TABLE[self.OUTPUT_TABLE['TAG_-1_1'] == 0].index
@@ -273,10 +287,11 @@ class GetLabelDate(BaseDataTool):
         df_len = self.OUTPUT_TABLE.shape[0]
         # 随机排序
         self.OUTPUT_TABLE.take(np.random.permutation(df_len), axis=0)
+        self.OUTPUT_TABLE.reset_index(inplace=True)
         # 切片
         df_train = self.OUTPUT_TABLE.loc[:int(df_len * train_per), :]
-        df_dev = self.OUTPUT_TABLE.loc[:int(df_len * dev_per), :]
-        df_test = self.OUTPUT_TABLE.loc[:int(df_len * test_per), :]
+        df_dev = self.OUTPUT_TABLE.loc[int(df_len * train_per):int(df_len * train_per + df_len * dev_per), :]
+        df_test = self.OUTPUT_TABLE.loc[int(df_len * train_per + df_len * dev_per):, :]
 
         # -----------------------文件保存----------------------#
         if not os.path.exists(output_path):

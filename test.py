@@ -1,4 +1,4 @@
 import re
-from tools.data_tool import GetLabelDate
+from tools.data_tool import GetLabelData
 
-GetLabelDate('zyyx', 'rpt_earnings_adjust', ['stockcode', 'ann_date', 'title']).get_price([-1, 0, 1])
+GetLabelData('zyyx', 'rpt_earnings_adjust', ['stockcode', 'ann_date', 'title']).get_price([-1, 0, 1])
