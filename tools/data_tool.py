@@ -241,19 +241,22 @@ class GetLabelData(BaseDataTool):
 
             # ------------------入库-----------------------  #
             # 生成合成title
-            self.CODE_TABLE['TITLE_ALL'] = self.CODE_TABLE[['report_year', 'organ_name', 'author']].apply(
-                lambda x: str(x['report_year']) + str(x['organ_name']) + str(x['author']) + str(x['title']), axis=1)
+            self.CODE_TABLE['TITLE_ALL'] = self.CODE_TABLE[['report_year', 'organ_name', 'author', 'title']].apply(
+                lambda x: str(x['report_year']) + ',' +
+                          str(x['organ_name']) + ',' +
+                          str(x['author']) + ',' +
+                          str(x['title']), axis=1)
 
             # 转换ID
-            self.CODE_TABLE['ID_MD5'] = self.CODE_TABLE[['CODE', 'DATE_N']].apply(
-                lambda x: str(x['CODE']).strip() + str(x['DATE_N']).strip(), axis=1)
-            self.CODE_TABLE['ID_MD5'] = self.CODE_TABLE['ID_MD5'].apply(
-                lambda x: hashlib.md5(x.encode('UTF-8')).hexdigest())
+            self.CODE_TABLE['ID_MD5'] = self.CODE_TABLE['TITLE_ALL'].apply(
+                lambda x: hashlib.md5((str(x).strip()).encode('UTF-8')).hexdigest())
+            # self.CODE_TABLE['ID_MD5'] = self.CODE_TABLE['ID_MD5'].apply(
+            #     lambda x: hashlib.md5(x.encode('UTF-8')).hexdigest())
 
             # 入库结构
             self.OUTPUT_TABLE_STRUCT = {i: 'FLOAT' for i in self.CODE_TABLE.columns}
             self.OUTPUT_TABLE_STRUCT.update(
-                {'CODE': 'VARCHAR(20)', 'title': 'VARCHAR(30)',
+                {'CODE': 'VARCHAR(20)', 'title': 'VARCHAR(30)', 'TITLE_ALL': 'VARCHAR(50)',
                  'DATE_N': 'DATE', 'DATE_T': 'DATE', 'ID_MD5': 'VARCHAR(150)', 'PK': 'ID_MD5'
                  })
 
@@ -267,27 +270,31 @@ class GetLabelData(BaseDataTool):
 
     # 输出用于训练的数据
     def get_csv(self):
+
         # -----------------------读取数据-----------------------#
-        self.OUTPUT_TABLE = self.SqlObj.select_table('rpt_price', ['TAG_-1_1', 'title'], )
+        attr_columns = [i for i in self.SqlObj.select_columns('rpt_price') if 'TAG' in i]
+        attr_columns += ['TITLE_ALL']
+        print(attr_columns)
+        self.OUTPUT_TABLE = self.SqlObj.select_table('rpt_price', attr_columns, {'LIMIT': 100})
 
-        # self.OUTPUT_TABLE[self.OUTPUT_TABLE['TAG_-1_1']==0
-        index_drop = self.OUTPUT_TABLE[self.OUTPUT_TABLE['TAG_-1_1'] == 0].index
-        self.OUTPUT_TABLE.drop(index=index_drop, inplace=True)
+        # -----------------------删除不需要的标签-----------------------#
 
-        self.OUTPUT_TABLE['TAG_-1_1'] = self.OUTPUT_TABLE['TAG_-1_1'].apply(
-            lambda x: 0 if x == -1 else 1)
+        # index_drop = self.OUTPUT_TABLE[self.OUTPUT_TABLE['TAG_-1_1'] == 0].index
+        # self.OUTPUT_TABLE.drop(index=index_drop, inplace=True)
 
-        # -----------------------参数设置-----------------------#
-        output_path = 'C:/Users/Administrator/Desktop/rpt_report_price/'
+        # self.OUTPUT_TABLE['TAG_-1_1'] = self.OUTPUT_TABLE['TAG_-1_1'].apply(
+        #     lambda x: 0 if x == -1 else 1)
+
+        # -----------------------训练集参数设置-----------------------#
+        output_path = 'G:/我的云端硬盘/DataSets/rpt_report_price/'
         train_per = 0.8
         dev_per = 0.1
-        test_per = 1 - train_per - dev_per
-
-        # -----------------------切片-----------------------#
         df_len = self.OUTPUT_TABLE.shape[0]
+
         # 随机排序
         self.OUTPUT_TABLE.take(np.random.permutation(df_len), axis=0)
         self.OUTPUT_TABLE.reset_index(inplace=True)
+
         # 切片
         df_train = self.OUTPUT_TABLE.loc[:int(df_len * train_per), :]
         df_dev = self.OUTPUT_TABLE.loc[int(df_len * train_per):int(df_len * train_per + df_len * dev_per), :]
@@ -300,3 +307,13 @@ class GetLabelData(BaseDataTool):
         df_train.to_csv(output_path + 'train.csv')
         df_dev.to_csv(output_path + 'dev.csv')
         df_test.to_csv(output_path + 'test.csv')
+
+        # -----------------------文件压缩----------------------#
+        import zipfile
+        zf = zipfile.ZipFile('G:/我的云端硬盘/DataSets/rpt_report_price.zip', "w", zipfile.ZIP_DEFLATED)
+        for path, dirnames, filenames in os.walk(output_path):
+            # 去掉目标跟路径，只对目标文件夹下边的文件及文件夹进行压缩
+            fpath = path.replace(output_path, '')
+            for filename in filenames:
+                zf.write(os.path.join(path, filename), os.path.join(fpath, filename))
+        zf.close()
