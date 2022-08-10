@@ -50,6 +50,38 @@ class GetPriceData(BaseDataTool):
     def __init__(self, data_base):
         super(GetPriceData, self).__init__(data_base=data_base)
 
+    # 获取历史数据
+    def get_history_query(self, api_name: str, code: str, ):
+        # ----------------判断存在---------------#
+        table_name = code + '_' + api_name
+        if table_name in self.SqlObj.show_tables():
+            print('ok')
+            return
+        # ----------------获取股价数据----------------#
+        # 循环获取时间序列
+        self.df_api = pd.DataFrame()
+        date_list = [x.strftime('%Y%m%d') for x in pd.date_range('20000101', '20221231', freq='5000D')]
+        # 从API获取数据(每次返回5000行)
+        for date in date_list:
+            # 前复权
+            df_date = self.TuShare.query(api_name=api_name, ts_code=code, start_date=date, adj=None)
+            # 返回值不为空
+            if df_date is not None:
+                # 重构索引
+                df_date.set_index(['trade_date'], inplace=True)
+                # 两个dataframe合并
+                self.df_api = pd.concat([self.df_api, df_date])
+
+        # 检查去重
+        self.df_api = self.df_api.drop_duplicates()
+        self.df_api.reset_index(inplace=True)
+        # 入库
+        self.OUTPUT_TABLE_STRUCT = {'trade_date': 'DATE', 'ts_code': 'VARCHAR(20)',
+                                    'total_mv': 'FLOAT', 'circ_mv': 'FLOAT',
+                                    'PK': 'trade_date'}
+        self.SqlObj.insert_table(table_name, self.df_api, self.OUTPUT_TABLE_STRUCT)
+
+    # 下载K线数据
     def down_kline(self, code: str):
         self.OUTPUT_TABLE = None
         # 循环获取时间序列
