@@ -274,7 +274,7 @@ class GetLabelData(BaseDataTool):
         # -----------------------读取数据-----------------------#
         attr_columns = [i for i in self.SqlObj.select_columns('rpt_price') if 'TAG' in i]
         attr_columns += ['TITLE_ALL']
-        self.OUTPUT_TABLE = self.SqlObj.select_table('rpt_price', attr_columns, {'LIMIT': 100})
+        self.OUTPUT_TABLE = self.SqlObj.select_table('rpt_price', attr_columns)
 
         # -----------------------删除不需要的标签-----------------------#
 
@@ -285,7 +285,8 @@ class GetLabelData(BaseDataTool):
         #     lambda x: 0 if x == -1 else 1)
 
         # -----------------------训练集参数设置-----------------------#
-        output_path = 'C:/Users/Administrator/Desktop/rpt_report_price/'
+        output_filename='rpt_report_price/'
+        output_path = 'C:/Users/Administrator/Desktop/'+output_filename
         train_per = 0.8
         dev_per = 0.1
         df_len = self.OUTPUT_TABLE.shape[0]
@@ -303,9 +304,9 @@ class GetLabelData(BaseDataTool):
         if not os.path.exists(output_path):
             os.makedirs(output_path)
 
-        df_train.to_csv(output_path + 'train.csv')
-        df_dev.to_csv(output_path + 'dev.csv')
-        df_test.to_csv(output_path + 'test.csv')
+        df_train.to_csv(output_path + 'train.csv',index=False)
+        df_dev.to_csv(output_path + 'dev.csv',index=False)
+        df_test.to_csv(output_path + 'test.csv',index=False)
 
         # -----------------------文件压缩----------------------#
         import zipfile
