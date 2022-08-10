@@ -273,7 +273,7 @@ class GetLabelData(BaseDataTool):
 
         # -----------------------读取数据-----------------------#
         attr_columns = [i for i in self.SqlObj.select_columns('rpt_price') if 'TAG' in i]
-        attr_columns += ['TITLE_ALL']
+        attr_columns += ['TITLE_ALL', 'title']
         self.OUTPUT_TABLE = self.SqlObj.select_table('rpt_price', attr_columns)
 
         # -----------------------删除不需要的标签-----------------------#
@@ -285,17 +285,17 @@ class GetLabelData(BaseDataTool):
         #     lambda x: 0 if x == -1 else 1)
 
         # -----------------------训练集参数设置-----------------------#
-        output_filename='rpt_report_price/'
-        output_path = 'C:/Users/Administrator/Desktop/'+output_filename
-        train_per = 0.8
-        dev_per = 0.1
+        output_filename = 'rpt_report_price'
+        output_path = 'C:/Users/Administrator/Desktop/' + output_filename + '/'
+        train_per = 0.9
+        dev_per = 0.05
         df_len = self.OUTPUT_TABLE.shape[0]
 
-        # 随机排序
+        # -----------------------随机排序---------------------#
         self.OUTPUT_TABLE.take(np.random.permutation(df_len), axis=0)
         self.OUTPUT_TABLE.reset_index(inplace=True)
 
-        # 切片
+        # -----------------------切片---------------------#
         df_train = self.OUTPUT_TABLE.loc[:int(df_len * train_per), :]
         df_dev = self.OUTPUT_TABLE.loc[int(df_len * train_per):int(df_len * train_per + df_len * dev_per), :]
         df_test = self.OUTPUT_TABLE.loc[int(df_len * train_per + df_len * dev_per):, :]
@@ -304,14 +304,13 @@ class GetLabelData(BaseDataTool):
         if not os.path.exists(output_path):
             os.makedirs(output_path)
 
-        df_train.to_csv(output_path + 'train.csv',index=False)
-        df_dev.to_csv(output_path + 'dev.csv',index=False)
-        df_test.to_csv(output_path + 'test.csv',index=False)
+        df_train.to_csv(output_path + 'train.csv', index=False)
+        df_dev.to_csv(output_path + 'dev.csv', index=False)
+        df_test.to_csv(output_path + 'test.csv', index=False)
 
         # -----------------------文件压缩----------------------#
         import zipfile
-
-        zf = zipfile.ZipFile('G:/我的云端硬盘/DataSets/rpt_report_price.zip', "w", zipfile.ZIP_DEFLATED)
+        zf = zipfile.ZipFile('G:/我的云端硬盘/DataSets/{}.zip'.format(output_filename), "w", zipfile.ZIP_DEFLATED)
         for path, dirnames, filenames in os.walk(output_path):
             # 去掉目标跟路径，只对目标文件夹下边的文件及文件夹进行压缩
             fpath = path.replace(output_path, '')
