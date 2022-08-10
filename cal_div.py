@@ -21,7 +21,8 @@ class DivData(GetPriceData):
 
     def get_div_data(self):
         # ----------------获取股利数据----------------#
-        self.DIV_DATA = self.SqlObj.select_table('茅台股息', ['税前每股派息', '除权除息日', '分红年度', ])
+        self.DIV_DATA = self.SqlObj.select_table('茅台股息', ['税前每股派息', '基准股本', '除权除息日', '分红年度'])
+        self.DIV_DATA['税前现金股利'] = self.DIV_DATA['税前每股派息'] * self.DIV_DATA['基准股本'] * 10000
 
         # ----------------获取股价数据----------------#
         self.PRICE_DATA = self.SqlObj.select_table('600519.SH_daily_basic', ['trade_date', 'circ_mv', ])
@@ -30,28 +31,31 @@ class DivData(GetPriceData):
         # ----------------日度TTM---------------#
         self.PRICE_DATA['trade_date_y-1'] = self.PRICE_DATA['trade_date'].apply(lambda x: x - relativedelta(years=1))
 
-        # 找出trade_date_y-1到现在发生的除息除权日
-        def find_div_last(df_x):
+        # ----------------TTM计算---------------#
+
+        def find_div_ttm(df_x):
             # 股票每日基本信息表
             start_date = df_x['trade_date_y-1']
             end_date = df_x['trade_date']
             mv = df_x['circ_mv']
 
             # 股票股利表
+            # 找出trade_date_y-1到现在发生的除息除权日
             df_div = self.DIV_DATA[
                 (start_date < self.DIV_DATA['除权除息日'])
                 & (self.DIV_DATA['除权除息日'] < end_date)]
 
             # 指标计算
-            div_count = df_div['税前每股派息'].count()
-            div_ttm = df_div['税前每股派息'].sum() / mv
+            div_count = df_div['税前现金股利'].count()
+            divrate_ttm = df_div['税前现金股利'].sum() / mv
 
-            return div_ttm, div_count
+            return divrate_ttm, div_count
 
-        self.PRICE_DATA[['div_ttm', 'div_count']] = self.PRICE_DATA[['trade_date_y-1', 'trade_date', 'circ_mv']].apply(
-            lambda x: find_div_last(x), axis=1, result_type='expand')
+        # ----------------TTM计算---------------#
+        self.PRICE_DATA[['divrate_ttm', 'div_count']] = self.PRICE_DATA.apply(
+            lambda x: find_div_ttm(x), axis=1, result_type='expand')
 
-        self.PRICE_DATA.to_csv('div.csv')
+        self.PRICE_DATA.to_csv('茅台股息.csv')
         # ----------------合并----------------#
         # 通过左连接映射traget_column
         # self.OUTPUT_TABLE = pd.merge(self.PRICE_DATA, self.DIV_DATA,
