@@ -10,9 +10,11 @@ from tools.data_tool import GetPriceData
 import pandas as pd
 from datetime import datetime as dt
 from dateutil.relativedelta import relativedelta
+from tqdm import tqdm
 
 
 class DivData(GetPriceData):
+
     def __init__(self, data_base):
         super(DivData, self).__init__(data_base=data_base)
 
