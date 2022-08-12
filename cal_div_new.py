@@ -1,5 +1,6 @@
 import time
 
+import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
@@ -22,8 +23,10 @@ class CalDiv:
         self.DIV_TABLE = self.DIV_TABLE[self.DIV_TABLE['s_div_progress'] == '3']  # 只保留3
         # self.DIV_TABLE['ex_dt'].dropna(inplace=True)  # 去掉无除息除权的
         self.DIV_TABLE = self.DIV_TABLE[['stockcode', 'report_period',
-                                         'ann_date', 's_div_prelandate', 's_div_preanndt',
-                                         's_div_smtgdate', 'dvd_ann_dt', 'ex_dt',
+                                         'ann_date',
+                                         # 's_div_prelandate', 's_div_preanndt',
+                                         # 's_div_smtgdate', 'dvd_ann_dt', 'ex_dt',
+
                                          'cash_dvd_per_sh_pre_tax', 's_div_baseshare']]
         self.MV_TABLE = self.MV_TABLE[['stockcode', 'ann_date', 's_val_mv']]
 
@@ -33,34 +36,28 @@ class CalDiv:
     # 生成年度股息表
     def get_div_by_year(self):
         # ----------------提取report_period中的年份----------------#
-        self.DIV_TABLE['report_year'] = self.DIV_TABLE['report_period'].apply(
-            lambda x: str(x)[:-4])
+        self.DIV_TABLE['report_year'] = self.DIV_TABLE['report_period'].astype('str').str[:-4]
+
         # ----------------计算总股息----------------#
         self.DIV_TABLE['dvd_pre_tax'] = self.DIV_TABLE['cash_dvd_per_sh_pre_tax'] * self.DIV_TABLE[
-            's_div_baseshare']
+            's_div_baseshare'] * 10000
 
         # ----------------获取股票名称----------------#)
+
+        # 并行计算 #
         for code in tqdm(self.DIV_TABLE['stockcode'].unique()):
             # 选取单个股票
             df_code = self.DIV_TABLE[self.DIV_TABLE['stockcode'] == code]
-            # df_date = df_code.groupby(['report_year'], sort='report_year')
-            # df_date.apply(lambda x: print(x))
-            # time.sleep(11111)
+
             # 按照年份聚合:税前股息累加,税前股息计数,每年最后的公告日期
-            df_date = df_code.groupby(['report_year'], sort='ann_date').agg(
-                {'dvd_pre_tax': 'sum', 'stockcode': 'count',
-                 'ann_date': 'max',
-                 's_div_prelandate': lambda x: x.iloc[-1],
-                 's_div_preanndt': lambda x: x.iloc[-1],
-                 's_div_smtgdate': lambda x: x.iloc[-1],
-                 'dvd_ann_dt': lambda x: x.iloc[-1],
-                 'ex_dt': lambda x: x.iloc[-1],
-                 }
-            )
-            # print(df_date)
-            # time.sleep(11111)
-            df_date.rename(columns={'stockcode': 'dvd_count'}, inplace=True)  # 统计在该年份求和了多少次股息
-            df_date.reset_index(inplace=True)
+            df_date = df_code.groupby(['report_year'], sort='ann_date', as_index=False).agg(
+                {'dvd_pre_tax': ['sum', 'count', 'min', 'median', 'max'],
+                 'ann_date': ['min', 'median', 'max'],
+                 })
+
+            # df_date = df_code.groupby(['report_year'], sort='ann_date', as_index=False)
+            #
+            # df_date.reset_index(inplace=True)
             # 增加stockcode名
             df_date['stockcode'] = code
 
@@ -76,7 +73,7 @@ class CalDiv:
             self.DIV_YEAR_TABLE = pd.concat([self.DIV_YEAR_TABLE, df_date])
 
         # ----------------保存----------------)
-        self.DIV_YEAR_TABLE.to_csv('div_by_year.csv')
+        self.DIV_YEAR_TABLE.to_csv('div_by_year.csv', index=False)
 
     # 计算股息率
     def get_div_rate(self):
