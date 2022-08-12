@@ -158,8 +158,6 @@ class CalDiv:
                 lambda x: x['dvd_pre_tax_sum'] if x['ann_date'] > x['ann_date_max'] else x['dvd_pre_tax_sum_l1']
                 , axis=1)
 
-
-
         # 按照当前日期ann_date取出截面数据
 
         self.MERGE_TABLE.to_csv('cal_div.csv')
