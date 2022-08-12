@@ -42,7 +42,7 @@ class CalDiv:
         self.DIV_TABLE['dvd_pre_tax'] = self.DIV_TABLE['cash_dvd_per_sh_pre_tax'] * self.DIV_TABLE[
             's_div_baseshare'] * 10000
 
-        # ----------------获取股票名称----------------#)
+        # ----------------获取股票名称----------------#
 
         # 并行计算 #
         for code in tqdm(self.DIV_TABLE['stockcode'].unique()):
@@ -50,14 +50,15 @@ class CalDiv:
             df_code = self.DIV_TABLE[self.DIV_TABLE['stockcode'] == code]
 
             # 按照年份聚合:税前股息累加,税前股息计数,每年最后的公告日期
-            df_date = df_code.groupby(['report_year'], sort='ann_date', as_index=False).agg(
-                {'dvd_pre_tax': ['sum', 'count', 'min', 'median', 'max'],
-                 'ann_date': ['min', 'median', 'max'],
-                 })
+            df_date = df_code.groupby(['report_year']).agg(
+                {'dvd_pre_tax': ['sum', 'count'],
+                 'ann_date': ['max'],
+                 }
+            )
 
             # df_date = df_code.groupby(['report_year'], sort='ann_date', as_index=False)
             #
-            # df_date.reset_index(inplace=True)
+            df_date.reset_index(inplace=True)
             # 增加stockcode名
             df_date['stockcode'] = code
 
@@ -71,7 +72,8 @@ class CalDiv:
             # df_date['id'] = code + df_date['report_year'].astype('str')
             # 拼接
             self.DIV_YEAR_TABLE = pd.concat([self.DIV_YEAR_TABLE, df_date])
-
+        # print(self.DIV_YEAR_TABLE.columns.ravel())
+        self.DIV_YEAR_TABLE.columns = ["".join(x) for x in self.DIV_YEAR_TABLE.columns.ravel()]
         # ----------------保存----------------)
         self.DIV_YEAR_TABLE.to_csv('div_by_year.csv', index=False)
 
@@ -169,7 +171,6 @@ class CalDiv:
         # 匹配
         # self.DIV_RATE_TABLE = pd.merge(self.MV_TABLE, self.DIV_YEAR_TABLE, how='left', on=['code', ''])
         # 去除匹配后时间错误的列
-
 
 if __name__ == '__main__':
     app = CalDiv()
