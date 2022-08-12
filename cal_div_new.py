@@ -11,7 +11,7 @@ class CalDiv:
         self.MV_TABLE = pd.read_parquet('mv.parquet')
         self.DIV_TABLE = pd.read_parquet('AShareDividend.parquet')
         # self.DIV_TABLE = self.DIV_TABLE.iloc[:10000, :]
-        self.MV_TABLE = self.MV_TABLE.iloc[-10000:, :]
+        # self.MV_TABLE = self.MV_TABLE.iloc[-10000:, :]
         # 生成的中间表
         self.DIV_YEAR_TABLE = pd.DataFrame()
         # 输出的静态股息表
@@ -74,6 +74,8 @@ class CalDiv:
             self.DIV_YEAR_TABLE = pd.concat([self.DIV_YEAR_TABLE, df_date])
         # print(self.DIV_YEAR_TABLE.columns.ravel())
         self.DIV_YEAR_TABLE.columns = ["".join(x) for x in self.DIV_YEAR_TABLE.columns.ravel()]
+        self.DIV_YEAR_TABLE.rename(columns={'ann_datemax': 'ann_date'}, inplace=True)
+
         # ----------------保存----------------)
         self.DIV_YEAR_TABLE.to_csv('div_by_year.csv', index=False)
 
@@ -116,6 +118,16 @@ class CalDiv:
 
         print(self.DIV_RATE_TABLE)
         # self.DIV_RATE_TABLE.to_csv('603630.csv')
+
+    # 重新算分红
+    def get_div(self):
+        # 股息表
+        self.DIV_YEAR_TABLE = pd.read_csv('div_by_year.csv')
+        # 不用最近匹配,用上一年的匹配,没有就是空
+        self.MV_TABLE['report_year'] = (self.MV_TABLE['ann_date'].astype('str').str[:-4].astype('int')) - 1
+        self.DIV_RATE_TABLE = pd.merge(self.MV_TABLE, self.DIV_YEAR_TABLE, how='left', on=['stockcode', 'report_year'])
+        self.DIV_RATE_TABLE.head(100).to_csv('merge.csv', index=False)
+        # print(self.DIV_RATE_TABLE.head())
 
     def get_no_history(self):
         pd.options.mode.chained_assignment = None
@@ -172,9 +184,11 @@ class CalDiv:
         # self.DIV_RATE_TABLE = pd.merge(self.MV_TABLE, self.DIV_YEAR_TABLE, how='left', on=['code', ''])
         # 去除匹配后时间错误的列
 
+
 if __name__ == '__main__':
     app = CalDiv()
     # app.get_no_history()
-    app.get_div_by_year()
+    # app.get_div_by_year()
+    app.get_div()
     # app.get_div_rate()
     # app.get_exp_dr()
