@@ -150,10 +150,11 @@ class CalDiv:
     def get_exp_div(self):
         #
         self.MERGE_TABLE = pd.read_parquet('merge.parquet')
+        self.MERGE_TABLE = self.MERGE_TABLE.iloc[:1000, :]
         # ----------------在截面数据中计算----------------#
         # 静态股利
         self.DIV_RATE_TABLE['last_div'] = self.DIV_RATE_TABLE.apply(lambda x: x['dvd_pre_taxsum'] if x[''] > 0 else 0)
-        print(self.MERGE_TABLE.columns)
+        print(self.MERGE_TABLE)
 
     def get_no_history(self):
         pd.options.mode.chained_assignment = None
