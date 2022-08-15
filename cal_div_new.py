@@ -153,15 +153,22 @@ class CalDiv:
         self.MERGE_TABLE = self.MERGE_TABLE.iloc[-1000:, :]
         # ----------------在截面数据中计算----------------#
         # 静态股利
-        for lag_t in self.LAG_PERIOD:
-            self.MERGE_TABLE['last_div'] = self.MERGE_TABLE.apply(
-                lambda x: x['dvd_pre_tax_sum'] if x['ann_date'] > x['ann_date_max'] else x['dvd_pre_tax_sum_l1']
-                , axis=1)
+
+        # self.MERGE_TABLE['dvd_pre_tax_sum_l1'] = np.where(self.MERGE_TABLE[''] > self.MERGE_TABLE[''],
+        #                                                   self.MERGE_TABLE['dvd_pre_tax_sum'])
+        self.MERGE_TABLE['LAST_YEAR'] = self.MERGE_TABLE.apply(
+            lambda x: x['dvd_pre_tax_sum'] if x['ann_date'] > x['ann_date_max'] else None,axis=1
+        )
+        df=self.MERGE_TABLE
+
+        # for lag_t in self.LAG_PERIOD:
+        #     self.MERGE_TABLE['last_div'] = self.MERGE_TABLE.apply(
+        #         lambda x: x['dvd_pre_tax_sum'] if x['ann_date'] > x['ann_date_max'] else x['dvd_pre_tax_sum_l1']
+        #         , axis=1)
 
         # 按照当前日期ann_date取出截面数据
 
-        self.MERGE_TABLE.to_csv('cal_div.csv')
-        print(self.MERGE_TABLE)
+        self.MERGE_TABLE.to_csv('cal_div.csv', index=False)
 
     def get_no_history(self):
         pd.options.mode.chained_assignment = None
