@@ -1,2 +1,8 @@
 # 项目排除路径
 /data_clean/h5_data/
+/merge.parquet
+/cal_div.csv
+/div_by_year.csv
+/merge.csv
+/AShareDividend.parquet
+/mv.parquet
