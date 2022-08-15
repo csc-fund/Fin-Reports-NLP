@@ -91,11 +91,10 @@ class CalDiv:
         # df_m =
         # print(df_m)
 
-        # ----------------保存----------------)
+        # ----------------保存----------------#
         self.DIV_YEAR_TABLE.to_csv('div_by_year.csv', index=False)
 
     # 计算股息率
-
     def get_div_rate(self):
         # ----------------生成id用于匹配历史股息----------------#
         tqdm.pandas(desc='Start get_id')
