@@ -150,16 +150,17 @@ class CalDiv:
     def get_exp_div(self):
         #
         self.MERGE_TABLE = pd.read_parquet('merge.parquet')
-        self.MERGE_TABLE = self.MERGE_TABLE.iloc[-1000:, :]
+        self.MERGE_TABLE = self.MERGE_TABLE.iloc[-10000:, :]
         # ----------------在截面数据中计算----------------#
         # 静态股利
+        # 生成信息编码
+        for i in range(len(self.LAG_PERIOD)):
+            # 比较大小1
+            self.MERGE_TABLE['INFO_L{}'.format(i)] = self.MERGE_TABLE.apply(
+                lambda x: 1 if x['ann_date'] > x['ann_date_max'] else 0, axis=1
+            )
 
-        # self.MERGE_TABLE['dvd_pre_tax_sum_l1'] = np.where(self.MERGE_TABLE[''] > self.MERGE_TABLE[''],
-        #                                                   self.MERGE_TABLE['dvd_pre_tax_sum'])
-        self.MERGE_TABLE['LAST_YEAR'] = self.MERGE_TABLE.apply(
-            lambda x: x['dvd_pre_tax_sum'] if x['ann_date'] > x['ann_date_max'] else None,axis=1
-        )
-        df=self.MERGE_TABLE
+        print(self.MERGE_TABLE)
 
         # for lag_t in self.LAG_PERIOD:
         #     self.MERGE_TABLE['last_div'] = self.MERGE_TABLE.apply(
