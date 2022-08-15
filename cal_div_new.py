@@ -3,6 +3,7 @@ import time
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
+from sklearn.linear_model import LinearRegression
 
 
 class CalDiv:
@@ -148,28 +149,53 @@ class CalDiv:
 
     # 外推法计算预期
     def get_exp_div(self):
-        #
         self.MERGE_TABLE = pd.read_parquet('merge.parquet')
-        self.MERGE_TABLE = self.MERGE_TABLE.iloc[-10000:, :]
+
         # ----------------在截面数据中计算----------------#
-        # 静态股利
-        # 生成信息编码
+        self.MERGE_TABLE.rename(columns={'ann_date_max': 'ann_date_max_l0'}, inplace=True)
+        self.MERGE_TABLE.rename(columns={'dvd_pre_tax_sum': 'dvd_pre_tax_sum_l0'}, inplace=True)
+
         for i in range(len(self.LAG_PERIOD)):
-            # 比较大小1
-            self.MERGE_TABLE['INFO_L{}'.format(i)] = self.MERGE_TABLE.apply(
-                lambda x: 1 if x['ann_date'] > x['ann_date_max'] else 0, axis=1
-            )
+            # 使用历史日期比较大小,得到信息矩阵
+            self.MERGE_TABLE['INFO_L{}'.format(i)] = np.where(
+                self.MERGE_TABLE['ann_date'] > self.MERGE_TABLE['ann_date_max_l{}'.format(i)], 1, 0)
 
-        print(self.MERGE_TABLE)
+        # 如果滞后一期是0,就计算与滞后1期的差值,如果小于1年,就把数据前移
+        self.MERGE_TABLE['INFO_L00'] = np.where(
+            self.MERGE_TABLE['INFO_L0'] == 0, self.MERGE_TABLE['ann_date'] - self.MERGE_TABLE['ann_date_max_l1'], 1)
+        self.MERGE_TABLE['INFO_L00'] = np.where(
+            (20000 > self.MERGE_TABLE['INFO_L00']) & (self.MERGE_TABLE['INFO_L00'] > 0), 1, 0)
+        self.MERGE_TABLE['INFO_L00'].fillna(0, inplace=True)
 
-        # for lag_t in self.LAG_PERIOD:
-        #     self.MERGE_TABLE['last_div'] = self.MERGE_TABLE.apply(
-        #         lambda x: x['dvd_pre_tax_sum'] if x['ann_date'] > x['ann_date_max'] else x['dvd_pre_tax_sum_l1']
-        #         , axis=1)
+        # 替换INFO_L0中的0
+        self.MERGE_TABLE['INFO_L0'] = np.where(
+            self.MERGE_TABLE['INFO_L0'] == 0, self.MERGE_TABLE['INFO_L00'], 1)
 
-        # 按照当前日期ann_date取出截面数据
+        # 把历史信息映射到分红
+        for i in range(len(self.LAG_PERIOD)):
+            self.MERGE_TABLE['RAW_L{}'.format(i)] = np.where(
+                self.MERGE_TABLE['INFO_L{}'.format(i)] == 0, 0, self.MERGE_TABLE['dvd_pre_tax_sum_l{}'.format(i)])
 
-        self.MERGE_TABLE.to_csv('cal_div.csv', index=False)
+        # ----------------使用OLS线性预测分红----------------#
+        cal_column = ['RAW_L{}'.format(i) for i in range(len(self.LAG_PERIOD))]
+        # 计算X的方差(总体)
+        var_x = np.var(range(len(self.LAG_PERIOD)))
+        # 计算X的均值
+        avg_x = np.average(range(len(self.LAG_PERIOD)))
+        # 计算Y的均值
+        self.MERGE_TABLE['AVG_RAW'] = np.average(self.MERGE_TABLE[cal_column], axis=1)
+        # 计算Y的方差
+        self.MERGE_TABLE['VAR_RAW'] = np.var(self.MERGE_TABLE[cal_column], axis=1)
+        # 计算XY的协方差
+
+        self.MERGE_TABLE['COV_RAW']=np.average(, axis=1)
+
+        print(self.MERGE_TABLE['AVG_RAW'])
+        time.sleep(111)
+
+        # 计算XY的协方差(总体)
+
+        self.MERGE_TABLE.iloc[-100000:, :].to_csv('cal_div.csv', index=False)
 
     def get_no_history(self):
         pd.options.mode.chained_assignment = None
