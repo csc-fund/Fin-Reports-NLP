@@ -150,6 +150,7 @@ class CalDiv:
     # 外推法计算预期
     def get_exp_div(self):
         self.MERGE_TABLE = pd.read_parquet('merge.parquet')
+        # self.MERGE_TABLE = self.MERGE_TABLE.iloc[-100:, :]
 
         # ----------------在截面数据中计算----------------#
         self.MERGE_TABLE.rename(columns={'ann_date_max': 'ann_date_max_l0'}, inplace=True)
@@ -177,25 +178,54 @@ class CalDiv:
                 self.MERGE_TABLE['INFO_L{}'.format(i)] == 0, 0, self.MERGE_TABLE['dvd_pre_tax_sum_l{}'.format(i)])
 
         # ----------------使用OLS线性预测分红----------------#
+
         cal_column = ['RAW_L{}'.format(i) for i in range(len(self.LAG_PERIOD))]
-        # 计算X的方差(总体)
-        var_x = np.var(range(len(self.LAG_PERIOD)))
+        # 计算X的方差 (样本 自由度-1)
+        var_x = np.var(range(len(self.LAG_PERIOD)), ddof=1)
         # 计算X的均值
         avg_x = np.average(range(len(self.LAG_PERIOD)))
         # 计算Y的均值
         self.MERGE_TABLE['AVG_RAW'] = np.average(self.MERGE_TABLE[cal_column], axis=1)
         # 计算Y的方差
         self.MERGE_TABLE['VAR_RAW'] = np.var(self.MERGE_TABLE[cal_column], axis=1)
-        # 计算XY的协方差
 
-        self.MERGE_TABLE['COV_RAW']=np.average(, axis=1)
+        # ----------------计算XY的协方差----------------#
+        # 逐个计算: (Yi-Y)*(Xi-X)
+        for i in range(len(self.LAG_PERIOD)):
+            self.MERGE_TABLE['COV_RAW_L{}'.format(i)] = (self.MERGE_TABLE['RAW_L{}'.format(i)] - self.MERGE_TABLE[
+                'AVG_RAW']) * (i - var_x)
 
-        print(self.MERGE_TABLE['AVG_RAW'])
-        time.sleep(111)
+        # 协方差(样本): SUM(Yi-Y)*(Xi-X)/N-1
+        cov_column = ['COV_{}'.format(i) for i in cal_column]
+        self.MERGE_TABLE['COV_RAW'] = (np.sum(self.MERGE_TABLE[cov_column], axis=1)) / (len(self.LAG_PERIOD) - 1)
 
-        # 计算XY的协方差(总体)
+        # ----------------计算Beta_hat----------------#
+        # 斜率: Beta_hat = COV(XY)/COV(XX)
+        self.MERGE_TABLE['BETA_RAW'] = self.MERGE_TABLE['COV_RAW'] / var_x
 
-        self.MERGE_TABLE.iloc[-100000:, :].to_csv('cal_div.csv', index=False)
+        # ----------------计算Alpha_hat---------------#
+        # 截距: Alpha_hat=AVG(Y)-Beta_hat*AVG(X)
+        self.MERGE_TABLE['ALPHA_RAW'] = self.MERGE_TABLE['AVG_RAW'] - self.MERGE_TABLE['BETA_RAW'] * avg_x
+
+        # ----------------预测Y----------------#
+        # 预测:
+        self.MERGE_TABLE['PREDICT_RAW_{}'.format(len(self.LAG_PERIOD))] = self.MERGE_TABLE['ALPHA_RAW'] + \
+                                                                          self.MERGE_TABLE['BETA_RAW'] * len(
+            self.LAG_PERIOD)
+
+        # ----------------去除预测的负值----------------#
+        self.MERGE_TABLE['PREDICT_RAW_{}'.format(len(self.LAG_PERIOD))] = np.where(
+            self.MERGE_TABLE['PREDICT_RAW_{}'.format(len(self.LAG_PERIOD))] < 0, 0,
+            self.MERGE_TABLE['PREDICT_RAW_{}'.format(len(self.LAG_PERIOD))])
+
+        # print(self.MERGE_TABLE.iloc[-1,:])
+        print('saving...')
+        self.MERGE_TABLE = self.MERGE_TABLE[
+            ['stockcode', 'ann_date',
+             'RAW_L0', 'RAW_L1', 'RAW_L2', 'RAW_L3',
+             'PREDICT_RAW_4']]
+
+        self.MERGE_TABLE.to_csv('cal_div.csv', index=False)
 
     def get_no_history(self):
         pd.options.mode.chained_assignment = None
