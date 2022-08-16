@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 # ----------------参数和命名----------------#
 LAG_PERIOD = 4  # 滞后期
-REFER_DATE = 's_div_prelandate'  # ann_date,s_div_prelandate
+REFER_DATE = 'ann_date'  # ann_date,s_div_prelandate
 MERGE_COLUMN = ['report_year', 'dvd_pre_tax_sum', REFER_DATE + '_max']  # 计算出的列的命名
 
 AVG_COLUMN = 'AVG_DIV_{}'.format(LAG_PERIOD - 1)  # 分红列平均值
@@ -40,7 +40,7 @@ def get_div_by_year():
         # 按照年份聚合:税前股息累加,税前股息计数,每年最后的日期
         df_date = df_code.groupby(['report_year'], sort='report_year').agg(
             {'dvd_pre_tax': [('dvd_pre_tax_sum', 'sum')],
-             's_div_prelandate': [('{}_max'.format(REFER_DATE), 'max')]
+             REFER_DATE: [('{}_max'.format(REFER_DATE), 'max')]
              })
         # agg后的列名处理
         df_date.columns = df_date.columns.droplevel(0)
@@ -110,7 +110,7 @@ def get_exp_div():
     # ----------------计算XY的协方差----------------#
     # 逐个计算出积距: (Yi-Y)*(Xi-X)
     for i in range(LAG_PERIOD - 1):
-        MERGE_TABLE[PRODUCT_COLUMN[i]] = (MERGE_TABLE[PRE_COLUMN[i]] - MERGE_TABLE[AVG_COLUMN]) * (i - var_x)
+        MERGE_TABLE[PRODUCT_COLUMN[i]] = (MERGE_TABLE[PRE_COLUMN[i]] - MERGE_TABLE[AVG_COLUMN]) * (i - avg_x)
     # 协方差(样本): SUM(Yi-Y)*(Xi-X)/N-1
     MERGE_TABLE['COV_XY'] = (np.sum(MERGE_TABLE[PRODUCT_COLUMN], axis=1)) / (LAG_PERIOD - 1)
 
@@ -134,5 +134,6 @@ def get_exp_div():
 
 if __name__ == '__main__':
     # 生成年度股息表
-    # get_div_by_year()
+    get_div_by_year()
+    # 计算预期股息
     get_exp_div()
