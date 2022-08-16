@@ -134,5 +134,5 @@ def get_exp_div():
 
 if __name__ == '__main__':
     # 生成年度股息表
-    get_div_by_year()
+    # get_div_by_year()
     get_exp_div()
