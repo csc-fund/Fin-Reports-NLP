@@ -1,12 +1,11 @@
 import time
-
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
+from tqdm import tqdm  # 进度条
 
 # ----------------参数和命名----------------#
-LAG_PERIOD = 4  # 滞后期 当前时期为T,该参数表示使用了[T-2,T-3...,T-LAG_PERIOD]来预测T-1
-REFER_DATE = 'ann_date'  # ann_date,s_div_prelandate
+LAG_PERIOD = 4  # 滞后期: 当前时期为T,该参数表示使用了[T-2,T-3...,T-LAG_PERIOD]来预测T-1
+REFER_DATE = 'ann_date'  # 分红确认的日期: 可选ann_date,s_div_prelandate
 MERGE_COLUMN = ['report_year', 'dvd_pre_tax_sum', REFER_DATE + '_max']  # 计算出的列的命名
 
 # 线性回归使用的参数
@@ -125,7 +124,7 @@ def get_exp_div():
     MERGE_TABLE['ALPHA_HAT'] = MERGE_TABLE[AVG_COLUMN] - MERGE_TABLE['BETA_HAT'] * AVG_X
 
     # ----------------预测Y----------------#
-    # 预测:
+    # 预测:Y_hat=Alpha_hat+Beta_hat*X_i
     MERGE_TABLE[PRED_COLUMN] = MERGE_TABLE['ALPHA_HAT'] + MERGE_TABLE['BETA_HAT'] * (LAG_PERIOD - 1)
 
     # ----------------去除预测的负值----------------#
