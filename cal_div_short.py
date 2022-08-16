@@ -9,6 +9,7 @@ LAG_PERIOD = 4  # 滞后期 当前时期为T,该参数表示使用了[T-2,T-3...
 REFER_DATE = 'ann_date'  # ann_date,s_div_prelandate
 MERGE_COLUMN = ['report_year', 'dvd_pre_tax_sum', REFER_DATE + '_max']  # 计算出的列的命名
 
+# 线性回归使用的参数
 AVG_COLUMN = 'AVG_DIV_{}'.format(LAG_PERIOD - 1)  # 分红列平均值
 VAR_COLUMN = 'VAR_DIV_{}'.format(LAG_PERIOD - 1)  # 分红列的方差
 PRE_COLUMN = ['DIV_L{}'.format(i) for i in reversed(range(LAG_PERIOD)) if i != 0]  # 用于预测的滞后年
@@ -87,16 +88,16 @@ def get_exp_div():
 
     # ----------------当前没有T-1期分红信息的处理1:用T-2期分红信息替代----------------#
     MERGE_TABLE['INFO_L01'] = np.where(
-        MERGE_TABLE['INFO_L0'] == 0, MERGE_TABLE['ann_date'] - MERGE_TABLE[REFER_DATE + '_max_l1'].astype('float'), 1)
+        MERGE_TABLE['INFO_L0'] == 0, MERGE_TABLE['ann_date'] - MERGE_TABLE[REFER_DATE + '_max_l1'].astype('float'), 0)
     MERGE_TABLE['INFO_L01'] = np.where(
         (20000 > MERGE_TABLE['INFO_L01']) & (MERGE_TABLE['INFO_L01'] > 0), 1, 0)  # 只用2年内的分红信息
-    MERGE_TABLE['INFO_L01'].fillna(0, inplace=True)
+    # MERGE_TABLE['INFO_L01'].fillna(0, inplace=True)
     # 在原有的T-1期为0的数据上填充
     MERGE_TABLE['INFO_L01'] = np.where(
-        MERGE_TABLE['INFO_L0'] == 0, MERGE_TABLE['INFO_L01'], 1)
+        (MERGE_TABLE['INFO_L0'] == 0) & (MERGE_TABLE['INFO_L01'] == 1), 1, 0)
     # 映射到T-2期分红的值
     MERGE_TABLE['DIV_L01'] = np.where(
-        MERGE_TABLE['INFO_L0'] == 0, 0, MERGE_TABLE['dvd_pre_tax_sum_l1'])
+        MERGE_TABLE['INFO_L01'] == 1, MERGE_TABLE['dvd_pre_tax_sum_l1'], MERGE_TABLE['DIV_L0'])
 
     # ----------------当前没有T-1期分红信息的处理2:OLS线性预测----------------#
     # 计算X的方差 (样本 自由度-1)
@@ -113,6 +114,7 @@ def get_exp_div():
     for i in range(LAG_PERIOD - 1):
         # print(PRODUCT_COLUMN[i], PRE_COLUMN[i], '-', AVG_COLUMN, i - avg_x)
         MERGE_TABLE[PRODUCT_COLUMN[i]] = (MERGE_TABLE[PRE_COLUMN[i]] - MERGE_TABLE[AVG_COLUMN]) * (i - avg_x)
+
     # 协方差(样本): SUM(Yi-Y)*(Xi-X)/N-1
     MERGE_TABLE['COV_XY'] = (np.sum(MERGE_TABLE[PRODUCT_COLUMN], axis=1)) / (LAG_PERIOD - 2)
 
@@ -132,13 +134,16 @@ def get_exp_div():
     MERGE_TABLE[PRED_COLUMN] = np.where(MERGE_TABLE[PRED_COLUMN] < 0, 0, MERGE_TABLE[PRED_COLUMN])
 
     # ----------------保存结果----------------#
-    # DIV_L0是T-1期年报真实值  PRED_COLUMN是使用LAG_PERIOD计算出的OLS线性预测值
-    MERGE_TABLE = MERGE_TABLE[['stockcode', 'ann_date', 'DIV_L0'] + PRE_COLUMN + [PRED_COLUMN]]
+    # 只输出真实值和线性外推预测值
+    # DIV_L0是T-1期年报真实值
+    # PRED_COLUMN是使用参数LAG_PERIOD计算出的OLS线性预测值
+    MERGE_TABLE = MERGE_TABLE[['stockcode', 'ann_date', 'DIV_L0', 'DIV_L01'] + [PRED_COLUMN] + PRE_COLUMN]
+    # MERGE_TABLE = MERGE_TABLE[['stockcode', 'ann_date', 'DIV_L0', 'DIV_L01'] + PRE_COLUMN]
     MERGE_TABLE.to_csv('cal_div.csv', index=False)
 
 
 if __name__ == '__main__':
     # 生成年度股息表
-    get_div_by_year()
+    # get_div_by_year()
     # 计算预期股息
     get_exp_div()
