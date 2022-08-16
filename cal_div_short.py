@@ -72,6 +72,7 @@ def get_div_by_year():
 def get_exp_div():
     # 用合并后的表计算
     MERGE_TABLE = pd.read_parquet('merge.parquet')
+    MERGE_TABLE = MERGE_TABLE.iloc[-10000:, :]
 
     # ----------------计算能够使用的历史分红信息----------------#
     for i in range(LAG_PERIOD):
@@ -101,19 +102,19 @@ def get_exp_div():
     # 计算X的方差 (样本 自由度-1)
     var_x = np.var(range(LAG_PERIOD), ddof=1)
     # 计算X的均值
-    avg_x = np.average(range(LAG_PERIOD))
+    avg_x = np.average(range(LAG_PERIOD - 1))
     # 计算Y的均值
     MERGE_TABLE[AVG_COLUMN] = np.average(MERGE_TABLE[PRE_COLUMN].astype('float'), axis=1)
-    # 计算Y的方差
-    MERGE_TABLE[VAR_COLUMN] = np.var(MERGE_TABLE[PRE_COLUMN], axis=1)
+    # 计算Y的方差 (样本 自由度-1)
+    MERGE_TABLE[VAR_COLUMN] = np.var(MERGE_TABLE[PRE_COLUMN].astype('float'), axis=1, ddof=1)
 
     # ----------------计算XY的协方差----------------#
     # 逐个计算出积距: (Yi-Y)*(Xi-X)
     for i in range(LAG_PERIOD - 1):
+        print(PRODUCT_COLUMN[i], PRE_COLUMN[i], '-', AVG_COLUMN, i - avg_x)
         MERGE_TABLE[PRODUCT_COLUMN[i]] = (MERGE_TABLE[PRE_COLUMN[i]] - MERGE_TABLE[AVG_COLUMN]) * (i - avg_x)
     # 协方差(样本): SUM(Yi-Y)*(Xi-X)/N-1
     MERGE_TABLE['COV_XY'] = (np.sum(MERGE_TABLE[PRODUCT_COLUMN], axis=1)) / (LAG_PERIOD - 1)
-
 
     # ----------------计算Beta_hat----------------#
     # 斜率: Beta_hat = COV(XY)/COV(XX)
@@ -135,6 +136,6 @@ def get_exp_div():
 
 if __name__ == '__main__':
     # 生成年度股息表
-    get_div_by_year()
+    # get_div_by_year()
     # 计算预期股息
     get_exp_div()
