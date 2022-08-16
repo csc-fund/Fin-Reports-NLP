@@ -134,7 +134,7 @@ def get_exp_div():
     MERGE_TABLE[PRED_COLUMN] = np.where(MERGE_TABLE[PRED_COLUMN] < 0, 0, MERGE_TABLE[PRED_COLUMN])
 
     # ----------------保存结果----------------#
-    # 只输出真实值和线性外推预测值
+    # 输出真实值线性外推预测值
     # DIV_L0是T-1期年报真实值
     # PRED_COLUMN是使用参数LAG_PERIOD计算出的OLS线性预测值
     MERGE_TABLE = MERGE_TABLE[['stockcode', 'ann_date', 'DIV_L0', 'DIV_L01'] + [PRED_COLUMN] + PRE_COLUMN]
