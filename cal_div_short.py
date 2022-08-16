@@ -114,6 +114,7 @@ def get_exp_div():
     # 协方差(样本): SUM(Yi-Y)*(Xi-X)/N-1
     MERGE_TABLE['COV_XY'] = (np.sum(MERGE_TABLE[PRODUCT_COLUMN], axis=1)) / (LAG_PERIOD - 1)
 
+
     # ----------------计算Beta_hat----------------#
     # 斜率: Beta_hat = COV(XY)/COV(XX)
     MERGE_TABLE['BETA_HAT'] = MERGE_TABLE['COV_XY'] / var_x
