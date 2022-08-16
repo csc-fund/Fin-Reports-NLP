@@ -5,7 +5,7 @@ import pandas as pd
 from tqdm import tqdm
 
 # ----------------参数和命名----------------#
-LAG_PERIOD = 4  # 滞后期
+LAG_PERIOD = 4  # 滞后期 当前时期为T,该参数表示使用了[T-2,T-3...,T-LAG_PERIOD]来预测T-1
 REFER_DATE = 'ann_date'  # ann_date,s_div_prelandate
 MERGE_COLUMN = ['report_year', 'dvd_pre_tax_sum', REFER_DATE + '_max']  # 计算出的列的命名
 
@@ -50,7 +50,7 @@ def get_div_by_year():
         # ----------------合并历史股息信息----------------#
         for lag_t in range(LAG_PERIOD):
             # 根据report_year在df_date中获得历史数据
-            lag = pd.merge(df_date[MERGE_COLUMN], pd.DataFrame(df_date['report_year'] - lag_t + 1),
+            lag = pd.merge(df_date[MERGE_COLUMN], pd.DataFrame(df_date['report_year'] - lag_t - 1),
                            how='right', on=['report_year'], )
             lag.rename(columns={k: str(v).format(lag_t + 1) for k, v in RENAME_COLUMN.items()}, inplace=True)  # 列名处理
             # 合并历史数据
@@ -72,7 +72,7 @@ def get_div_by_year():
 def get_exp_div():
     # 用合并后的表计算
     MERGE_TABLE = pd.read_parquet('merge.parquet')
-    MERGE_TABLE = MERGE_TABLE.iloc[-10000:, :]
+    MERGE_TABLE = MERGE_TABLE.iloc[-10000:, :]  # 取部分样本核对
 
     # ----------------计算能够使用的历史分红信息----------------#
     for i in range(LAG_PERIOD):
@@ -100,7 +100,7 @@ def get_exp_div():
 
     # ----------------当前没有T-1期分红信息的处理2:OLS线性预测----------------#
     # 计算X的方差 (样本 自由度-1)
-    var_x = np.var(range(LAG_PERIOD), ddof=1)
+    var_x = np.var(range(LAG_PERIOD - 1), ddof=1)
     # 计算X的均值
     avg_x = np.average(range(LAG_PERIOD - 1))
     # 计算Y的均值
@@ -114,7 +114,7 @@ def get_exp_div():
         # print(PRODUCT_COLUMN[i], PRE_COLUMN[i], '-', AVG_COLUMN, i - avg_x)
         MERGE_TABLE[PRODUCT_COLUMN[i]] = (MERGE_TABLE[PRE_COLUMN[i]] - MERGE_TABLE[AVG_COLUMN]) * (i - avg_x)
     # 协方差(样本): SUM(Yi-Y)*(Xi-X)/N-1
-    MERGE_TABLE['COV_XY'] = (np.sum(MERGE_TABLE[PRODUCT_COLUMN], axis=1)) / (LAG_PERIOD - 1)
+    MERGE_TABLE['COV_XY'] = (np.sum(MERGE_TABLE[PRODUCT_COLUMN], axis=1)) / (LAG_PERIOD - 2)
 
     # ----------------计算Beta_hat----------------#
     # 斜率: Beta_hat = COV(XY)/COV(XX)
@@ -130,12 +130,15 @@ def get_exp_div():
 
     # ----------------去除预测的负值----------------#
     MERGE_TABLE[PRED_COLUMN] = np.where(MERGE_TABLE[PRED_COLUMN] < 0, 0, MERGE_TABLE[PRED_COLUMN])
-    # 保存结果
-    MERGE_TABLE.to_csv('cal_div.csv')
+
+    # ----------------保存结果----------------#
+    # DIV_L0是T-1期年报真实值  PRED_COLUMN是使用LAG_PERIOD计算出的OLS线性预测值
+    MERGE_TABLE = MERGE_TABLE[['stockcode', 'ann_date', 'DIV_L0'] + PRE_COLUMN + [PRED_COLUMN]]
+    MERGE_TABLE.to_csv('cal_div.csv', index=False)
 
 
 if __name__ == '__main__':
     # 生成年度股息表
-    # get_div_by_year()
+    get_div_by_year()
     # 计算预期股息
     get_exp_div()
