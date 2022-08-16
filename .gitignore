@@ -5,3 +5,4 @@
 /div_by_year.csv
 /merge.csv
 *.parquet
+*.csv
