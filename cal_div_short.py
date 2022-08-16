@@ -111,7 +111,7 @@ def get_exp_div():
     # ----------------计算XY的协方差----------------#
     # 逐个计算出积距: (Yi-Y)*(Xi-X)
     for i in range(LAG_PERIOD - 1):
-        print(PRODUCT_COLUMN[i], PRE_COLUMN[i], '-', AVG_COLUMN, i - avg_x)
+        # print(PRODUCT_COLUMN[i], PRE_COLUMN[i], '-', AVG_COLUMN, i - avg_x)
         MERGE_TABLE[PRODUCT_COLUMN[i]] = (MERGE_TABLE[PRE_COLUMN[i]] - MERGE_TABLE[AVG_COLUMN]) * (i - avg_x)
     # 协方差(样本): SUM(Yi-Y)*(Xi-X)/N-1
     MERGE_TABLE['COV_XY'] = (np.sum(MERGE_TABLE[PRODUCT_COLUMN], axis=1)) / (LAG_PERIOD - 1)
