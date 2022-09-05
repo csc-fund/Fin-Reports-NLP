@@ -7,3 +7,4 @@ if __name__ == '__main__':
                                              'report_year', 'organ_name', 'author'], [-1, 0, 1, 5])
     # label.get_tag( )
     label.get_csv()
+
